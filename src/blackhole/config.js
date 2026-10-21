@@ -65,23 +65,27 @@ export const config = {
       cool: [0.55, 0.7, 1.0],
     },
   },
-  // 블랙홀 주변 모양. 버튼 id → 얇은 원반, 도넛 구름, 제트('none', 'straight', 'precessing')를 켤지
+  // 블랙홀 주변 모양(프리셋이 고른다). 이름 → 얇은 원반, 도넛 구름, 제트('none', 'straight', 'precessing')를 켤지
   shapes: {
-    'bh-shape-disk': { id: 'disk', disk: true, cloud: false, jet: 'none' },
-    'bh-shape-bare': { id: 'bare', disk: false, cloud: false, jet: 'none' },
-    'bh-shape-jet': { id: 'jet', disk: true, cloud: false, jet: 'straight' },
-    'bh-shape-cloud': { id: 'cloud', disk: false, cloud: true, jet: 'none' },
-    'bh-shape-cloudjet': { id: 'cloudjet', disk: false, cloud: true, jet: 'straight' },
-    'bh-shape-precess': { id: 'precess', disk: true, cloud: false, jet: 'precessing' },
+    disk: { id: 'disk', disk: true, cloud: false, jet: 'none' },
+    bare: { id: 'bare', disk: false, cloud: false, jet: 'none' },
+    jet: { id: 'jet', disk: true, cloud: false, jet: 'straight' },
+    cloud: { id: 'cloud', disk: false, cloud: true, jet: 'none' },
+    cloudjet: { id: 'cloudjet', disk: false, cloud: true, jet: 'straight' },
+    precess: { id: 'precess', disk: true, cloud: false, jet: 'precessing' },
   },
   defaultShape: 'disk',
   // 제트(연출용 모양): 원반과 수직인 축을 따라 가늘게 퍼지는 빛줄기. 정해진 공식이 없어 모양과 밝기는 보기 좋게 정한 값이다.
   jet: {
     startHeight: 1.5,
-    baseWidth: 0.35,
-    spread: 0.1,
-    length: 22,
-    gain: 1.4,
+    baseWidth: 0.2,
+    spread: 0.03,
+    length: 30,
+    gain: 2.4,
+    knotSpacing: 3.2,
+    knotRate: 0.9,
+    knotSharpness: 2.5,
+    knotFloor: 0.2,
     speed: 0.7,
     beamingPower: 2.5,
     colorToken: '--jet',
@@ -103,10 +107,14 @@ export const config = {
   // rate: 축이 도는 빠르기(원반 시간 1초당 라디안), pitch: 멀어질수록 늦게 돌아 생기는 나선 간격(rs당 라디안)
   jetPrecessing: {
     startRadius: 1.5,
-    baseWidth: 0.3,
-    spread: 0.03,
-    length: 45,
-    gain: 2.2,
+    baseWidth: 0.16,
+    spread: 0.012,
+    length: 40,
+    gain: 3.2,
+    knotSpacing: 2.4,
+    knotRate: 0.7,
+    knotSharpness: 2.5,
+    knotFloor: 0.2,
     speed: 0.26,
     beamingPower: 3,
     coneDeg: 20,
@@ -115,17 +123,17 @@ export const config = {
     approachToken: '--jet-approach',
     recedeToken: '--jet-recede',
   },
-  // 눌러서 한 번에 바꾸는 예: 질량(태양 질량 단위), 카메라 거리(rs), 주변 모양(shapes의 버튼 id)
+  // 눌러서 한 번에 바꾸는 예: 질량(태양 질량 단위), 카메라 거리(rs), 주변 모양(shapes의 이름)
   // 홀로 떠도는 별 블랙홀은 보이지 않고, 궁수자리 A*는 흐릿한 원반, M87*은 도넛 모양 구름과 제트(EHT 사진),
   // SS 433은 원반과 나선으로 도는 제트를 가진다.
   presets: {
-    'bh-preset-stellar': { massSolar: 10, distanceRs: 25, shape: 'bh-shape-bare' },
-    'bh-preset-sgr': { massSolar: 4.3e6, distanceRs: 25, shape: 'bh-shape-disk' },
+    'bh-preset-stellar': { massSolar: 10, distanceRs: 25, shape: 'bare' },
+    'bh-preset-sgr': { massSolar: 4.3e6, distanceRs: 25, shape: 'disk' },
     // M87*은 EHT 사진처럼 거의 위에서(제트 축에서 약 17°) 본다
-    'bh-preset-m87': { massSolar: 6.5e9, distanceRs: 25, shape: 'bh-shape-cloudjet', elevationDeg: 73 },
+    'bh-preset-m87': { massSolar: 6.5e9, distanceRs: 25, shape: 'cloudjet', elevationDeg: 73 },
     // 질량은 아직 정확히 모른다(대략 10~20배)
     // SS 433은 원반을 거의 옆에서(약 11°) 본다
-    'bh-preset-ss433': { massSolar: 15, distanceRs: 25, shape: 'bh-shape-precess', elevationDeg: 11 },
+    'bh-preset-ss433': { massSolar: 15, distanceRs: 25, shape: 'precess', elevationDeg: 11 },
   },
   hints: {
     edgeOnMaxDeg: 5,

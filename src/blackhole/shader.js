@@ -56,6 +56,10 @@ export function buildBlackHoleFragment(tracing, disk, stars, jet, cloud, precess
   const float JET_GAIN = ${glFloat(jet.gain)};
   const float JET_SPEED = ${glFloat(jet.speed)};
   const float JET_BEAMING = ${glFloat(jet.beamingPower)};
+  const float JET_KNOT_SPACING = ${glFloat(jet.knotSpacing)};
+  const float JET_KNOT_RATE = ${glFloat(jet.knotRate)};
+  const float JET_KNOT_SHARP = ${glFloat(jet.knotSharpness)};
+  const float JET_KNOT_FLOOR = ${glFloat(jet.knotFloor)};
   const float CLOUD_INNER_A = ${glFloat(cloud.innerStart)};
   const float CLOUD_INNER_B = ${glFloat(cloud.innerEnd)};
   const float CLOUD_OUTER_A = ${glFloat(cloud.outerStart)};
@@ -73,6 +77,10 @@ export function buildBlackHoleFragment(tracing, disk, stars, jet, cloud, precess
   const float PREC_GAIN = ${glFloat(precessing.gain)};
   const float PREC_SPEED = ${glFloat(precessing.speed)};
   const float PREC_BEAMING = ${glFloat(precessing.beamingPower)};
+  const float PREC_KNOT_SPACING = ${glFloat(precessing.knotSpacing)};
+  const float PREC_KNOT_RATE = ${glFloat(precessing.knotRate)};
+  const float PREC_KNOT_SHARP = ${glFloat(precessing.knotSharpness)};
+  const float PREC_KNOT_FLOOR = ${glFloat(precessing.knotFloor)};
   const float PREC_RATE = ${glFloat(precessing.rate)};
   const float PREC_PITCH = ${glFloat(precessing.pitch)};
   const float PREC_SIN = ${glFloat(Math.sin((precessing.coneDeg * Math.PI) / 180))};
@@ -201,7 +209,7 @@ export function buildBlackHoleFragment(tracing, disk, stars, jet, cloud, precess
       if (rNow < HORIZON) break;
 
       // 제트: 블랙홀 위아래 축을 따라 뿜는 가는 빛줄기. 빛이 지나는 길을 따라 조금씩 더한다(옅은 기체라 가리지 않는다).
-      // 폭은 높이에 따라 퍼지고, 세기는 멀수록 약해진다. 관측자 쪽으로 오는 줄기가 더 밝다(도플러).
+      // 폭은 높이에 따라 조금 퍼지고, 세기는 멀수록 약해지며, 덩어리(매듭)들이 바깥으로 흘러간다. 관측자 쪽으로 오는 줄기가 더 밝다(도플러).
       if (uJetMode > 0.5 && uJetMode < 1.5) {
         float height = abs(position.y);
         if (height > JET_START) {
@@ -209,6 +217,8 @@ export function buildBlackHoleFragment(tracing, disk, stars, jet, cloud, precess
           float across = dot(position.xz, position.xz) / (width * width);
           if (across < 9.0) {
             float fade = exp(-(height - JET_START) / JET_LENGTH) * (JET_BASE_WIDTH * JET_BASE_WIDTH) / (width * width);
+            float knot = pow(0.5 + 0.5 * cos(6.2831853 * ((height - JET_START) / JET_KNOT_SPACING - uTime * JET_KNOT_RATE)), JET_KNOT_SHARP);
+            fade *= JET_KNOT_FLOOR + (1.0 - JET_KNOT_FLOOR) * knot;
             vec3 flow = vec3(0.0, position.y >= 0.0 ? 1.0 : -1.0, 0.0);
             float jetGamma = 1.0 / sqrt(1.0 - JET_SPEED * JET_SPEED);
             float jetShift = 1.0 / (jetGamma * (1.0 - JET_SPEED * dot(flow, -normalize(velocity))));
@@ -231,6 +241,8 @@ export function buildBlackHoleFragment(tracing, disk, stars, jet, cloud, precess
           float across = dot(lateral, lateral) / (width * width);
           if (across < 9.0) {
             float fade = exp(-away / PREC_LENGTH) * (PREC_BASE_WIDTH * PREC_BASE_WIDTH) / (width * width);
+            float knot = pow(0.5 + 0.5 * cos(6.2831853 * ((away - PREC_START) / PREC_KNOT_SPACING - uTime * PREC_KNOT_RATE)), PREC_KNOT_SHARP);
+            fade *= PREC_KNOT_FLOOR + (1.0 - PREC_KNOT_FLOOR) * knot;
             float flowGamma = 1.0 / sqrt(1.0 - PREC_SPEED * PREC_SPEED);
             float flowShift = 1.0 / (flowGamma * (1.0 - PREC_SPEED * dot(flow, -normalize(velocity))));
             vec3 tint = mix(uJetRed, uJetBlue, clamp(0.5 + 3.0 * (flowShift - 1.0), 0.0, 1.0));

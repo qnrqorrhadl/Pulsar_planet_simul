@@ -61,7 +61,14 @@ test('SS 433형 제트의 설정 값이 셰이더에 들어간다', () => {
   assert.match(fragment, /if \(uJetMode > 1\.5\)/);
 });
 
-test('프리셋이 가리키는 모양 버튼이 실제로 있다', () => {
+test('두 제트의 덩어리(매듭) 설정이 셰이더에 들어가고 값이 올바르다', () => {
+  for (const [jet, name] of [[config.jet, 'JET'], [config.jetPrecessing, 'PREC']]) {
+    assert.ok(jet.knotSpacing > 0 && jet.knotFloor >= 0 && jet.knotFloor < 1);
+    assert.match(fragment, new RegExp(`${name}_KNOT_SPACING = ${jet.knotSpacing.toFixed(4)};`));
+  }
+});
+
+test('프리셋이 가리키는 모양이 실제로 있다', () => {
   for (const preset of Object.values(config.presets)) {
     assert.ok(config.shapes[preset.shape], preset.shape);
     const { elevationDeg } = preset;

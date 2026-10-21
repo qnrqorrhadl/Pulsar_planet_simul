@@ -70,20 +70,11 @@ export function createBlackHoleMode(doc) {
   const scene = createBlackHoleScene(canvas, config);
   const sliders = bindSliders(doc, SLIDERS, config.ranges, state);
 
-  // 블랙홀 주변 모양(원반, 제트)을 고르는 버튼
-  const shapeButtons = Object.keys(config.shapes).map((id) => doc.getElementById(id));
-  function selectShape(id) {
-    state.shape = config.shapes[id];
-    for (const button of shapeButtons) {
-      button.setAttribute('aria-pressed', String(button.id === id));
-    }
-  }
-  for (const button of shapeButtons) {
-    button.addEventListener('click', () => selectShape(button.id));
-  }
-  selectShape(
-    Object.keys(config.shapes).find((id) => config.shapes[id].id === config.defaultShape)
-  );
+  // 블랙홀 주변 모양(원반, 구름, 제트)은 프리셋이 정한다
+  const selectShape = (name) => {
+    state.shape = config.shapes[name];
+  };
+  selectShape(config.defaultShape);
 
   // 질량을 키우면 같은 거리가 rs로는 가까워진다. 최소 거리보다 가까워지면 카메라를 뒤로 민다.
   function enforceLimits() {
