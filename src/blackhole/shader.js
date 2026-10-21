@@ -60,6 +60,14 @@ export function buildBlackHoleFragment(tracing, disk, stars, jet, cloud, precess
   const float JET_KNOT_RATE = ${glFloat(jet.knotRate)};
   const float JET_KNOT_SHARP = ${glFloat(jet.knotSharpness)};
   const float JET_KNOT_FLOOR = ${glFloat(jet.knotFloor)};
+  const float JET_WOBBLE = ${glFloat(jet.wobble)};
+  const float JET_WOBBLE_SCALE = ${glFloat(jet.wobbleScale)};
+  const float JET_WOBBLE_SPEED = ${glFloat(jet.wobbleSpeed)};
+  const float JET_SWELL = ${glFloat(jet.swell)};
+  const float JET_KNOT_JITTER = ${glFloat(jet.knotJitter)};
+  const float JET_RAGGED = ${glFloat(jet.ragged)};
+  const float JET_RAGGED_SCALE = ${glFloat(jet.raggedScale)};
+  const float JET_RAGGED_SPEED = ${glFloat(jet.raggedSpeed)};
   const float CLOUD_INNER_A = ${glFloat(cloud.innerStart)};
   const float CLOUD_INNER_B = ${glFloat(cloud.innerEnd)};
   const float CLOUD_OUTER_A = ${glFloat(cloud.outerStart)};
@@ -81,6 +89,14 @@ export function buildBlackHoleFragment(tracing, disk, stars, jet, cloud, precess
   const float PREC_KNOT_RATE = ${glFloat(precessing.knotRate)};
   const float PREC_KNOT_SHARP = ${glFloat(precessing.knotSharpness)};
   const float PREC_KNOT_FLOOR = ${glFloat(precessing.knotFloor)};
+  const float PREC_WOBBLE = ${glFloat(precessing.wobble)};
+  const float PREC_WOBBLE_SCALE = ${glFloat(precessing.wobbleScale)};
+  const float PREC_WOBBLE_SPEED = ${glFloat(precessing.wobbleSpeed)};
+  const float PREC_SWELL = ${glFloat(precessing.swell)};
+  const float PREC_KNOT_JITTER = ${glFloat(precessing.knotJitter)};
+  const float PREC_RAGGED = ${glFloat(precessing.ragged)};
+  const float PREC_RAGGED_SCALE = ${glFloat(precessing.raggedScale)};
+  const float PREC_RAGGED_SPEED = ${glFloat(precessing.raggedSpeed)};
   const float PREC_RATE = ${glFloat(precessing.rate)};
   const float PREC_PITCH = ${glFloat(precessing.pitch)};
   const float PREC_SIN = ${glFloat(Math.sin((precessing.coneDeg * Math.PI) / 180))};
@@ -141,6 +157,11 @@ export function buildBlackHoleFragment(tracing, disk, stars, jet, cloud, precess
       mix(mix(hash13(i + vec3(0.0, 0.0, 1.0)), hash13(i + vec3(1.0, 0.0, 1.0)), f.x),
           mix(hash13(i + vec3(0.0, 1.0, 1.0)), hash13(i + vec3(1.0, 1.0, 1.0)), f.x), f.y),
       f.z);
+  }
+
+  // 제트의 불규칙함: 줄기를 따라 흐르는 무작위 값(0~1). along은 줄기를 따라 간 거리, tag는 값마다 다른 번호.
+  float jetNoise(float along, float tag, float scale, float speed) {
+    return valueNoise(vec3(along / scale - uTime * speed, tag, tag * 1.7));
   }
 
   // 은하수 띠: 하늘의 한 큰 원 둘레에 퍼진 흐린 빛. 가운데는 따뜻하고 바깥은 푸르며, 중심선에 어두운 먼지 줄이 있다.
@@ -213,16 +234,31 @@ export function buildBlackHoleFragment(tracing, disk, stars, jet, cloud, precess
       if (uJetMode > 0.5 && uJetMode < 1.5) {
         float height = abs(position.y);
         if (height > JET_START) {
-          float width = JET_BASE_WIDTH + JET_SPREAD * (height - JET_START);
-          float across = dot(position.xz, position.xz) / (width * width);
-          if (across < 9.0) {
-            float fade = exp(-(height - JET_START) / JET_LENGTH) * (JET_BASE_WIDTH * JET_BASE_WIDTH) / (width * width);
-            float knot = pow(0.5 + 0.5 * cos(6.2831853 * ((height - JET_START) / JET_KNOT_SPACING - uTime * JET_KNOT_RATE)), JET_KNOT_SHARP);
-            fade *= JET_KNOT_FLOOR + (1.0 - JET_KNOT_FLOOR) * knot;
-            vec3 flow = vec3(0.0, position.y >= 0.0 ? 1.0 : -1.0, 0.0);
-            float jetGamma = 1.0 / sqrt(1.0 - JET_SPEED * JET_SPEED);
-            float jetShift = 1.0 / (jetGamma * (1.0 - JET_SPEED * dot(flow, -normalize(velocity))));
-            color += transmit * uJetColor * (exp(-across * across) * fade * pow(jetShift, JET_BEAMING) * JET_GAIN * dt);
+          float along = height - JET_START;
+          float lobe = position.y >= 0.0 ? 0.0 : 9.0;
+          float width = JET_BASE_WIDTH + JET_SPREAD * along;
+          float reach = (width * 3.0 * (1.0 + JET_SWELL) + JET_WOBBLE * along) * 1.6;
+          if (dot(position.xz, position.xz) < reach * reach) {
+            // A. 줄기 중심이 휘고 굵기가 들쭉날쭉하다
+            vec2 sway = vec2(jetNoise(along, 1.0 + lobe, JET_WOBBLE_SCALE, JET_WOBBLE_SPEED), jetNoise(along, 2.0 + lobe, JET_WOBBLE_SCALE, JET_WOBBLE_SPEED)) * 2.0 - 1.0;
+            vec2 lateral = position.xz - sway * JET_WOBBLE * along;
+            width *= max(0.2, 1.0 + JET_SWELL * (jetNoise(along, 3.0 + lobe, JET_WOBBLE_SCALE * 0.5, JET_WOBBLE_SPEED) * 2.0 - 1.0));
+            float across = dot(lateral, lateral) / (width * width);
+            // C. 가장자리가 거칠다
+            across *= max(0.2, 1.0 + JET_RAGGED * (valueNoise(position * JET_RAGGED_SCALE + vec3(0.0, -uTime * JET_RAGGED_SPEED * (position.y >= 0.0 ? 1.0 : -1.0), lobe)) * 2.0 - 1.0));
+            if (across < 9.0) {
+              float fade = exp(-along / JET_LENGTH) * (JET_BASE_WIDTH * JET_BASE_WIDTH) / (width * width);
+              // B. 덩어리 간격과 밝기가 제각각이다
+              float k = along / JET_KNOT_SPACING - uTime * JET_KNOT_RATE;
+              k += JET_KNOT_JITTER * 0.6 * (jetNoise(along, 4.0 + lobe, JET_WOBBLE_SCALE, JET_WOBBLE_SPEED) - 0.5);
+              float knot = pow(0.5 + 0.5 * cos(6.2831853 * k), JET_KNOT_SHARP);
+              knot *= max(0.0, mix(1.0, 2.0 * hash13(vec3(floor(k), 5.0, lobe)), JET_KNOT_JITTER));
+              fade *= JET_KNOT_FLOOR + (1.0 - JET_KNOT_FLOOR) * knot;
+              vec3 flow = vec3(0.0, position.y >= 0.0 ? 1.0 : -1.0, 0.0);
+              float jetGamma = 1.0 / sqrt(1.0 - JET_SPEED * JET_SPEED);
+              float jetShift = 1.0 / (jetGamma * (1.0 - JET_SPEED * dot(flow, -normalize(velocity))));
+              color += transmit * uJetColor * (exp(-across * across) * fade * pow(jetShift, JET_BEAMING) * JET_GAIN * dt);
+            }
           }
         }
       }
@@ -233,20 +269,36 @@ export function buildBlackHoleFragment(tracing, disk, stars, jet, cloud, precess
       if (uJetMode > 1.5) {
         float away = length(position);
         if (away > PREC_START) {
+          float along = away - PREC_START;
           float phase = uTime * PREC_RATE - away * PREC_PITCH;
           vec3 axis = vec3(PREC_SIN * cos(phase), PREC_COS, PREC_SIN * sin(phase));
-          vec3 flow = dot(position, axis) >= 0.0 ? axis : -axis;
+          float side = dot(position, axis) >= 0.0 ? 1.0 : -1.0;
+          vec3 flow = axis * side;
+          float lobe = side > 0.0 ? 0.0 : 9.0;
           vec3 lateral = position - flow * dot(position, flow);
           float width = PREC_BASE_WIDTH + PREC_SPREAD * away;
-          float across = dot(lateral, lateral) / (width * width);
-          if (across < 9.0) {
-            float fade = exp(-away / PREC_LENGTH) * (PREC_BASE_WIDTH * PREC_BASE_WIDTH) / (width * width);
-            float knot = pow(0.5 + 0.5 * cos(6.2831853 * ((away - PREC_START) / PREC_KNOT_SPACING - uTime * PREC_KNOT_RATE)), PREC_KNOT_SHARP);
-            fade *= PREC_KNOT_FLOOR + (1.0 - PREC_KNOT_FLOOR) * knot;
-            float flowGamma = 1.0 / sqrt(1.0 - PREC_SPEED * PREC_SPEED);
-            float flowShift = 1.0 / (flowGamma * (1.0 - PREC_SPEED * dot(flow, -normalize(velocity))));
-            vec3 tint = mix(uJetRed, uJetBlue, clamp(0.5 + 3.0 * (flowShift - 1.0), 0.0, 1.0));
-            color += transmit * tint * (exp(-across * across) * fade * pow(flowShift, PREC_BEAMING) * PREC_GAIN * dt);
+          float reach = (width * 3.0 * (1.0 + PREC_SWELL) + PREC_WOBBLE * along) * 1.6;
+          if (dot(lateral, lateral) < reach * reach) {
+            // A. 줄기 중심이 휘고 굵기가 들쭉날쭉하다
+            vec3 sway = vec3(jetNoise(along, 1.0 + lobe, PREC_WOBBLE_SCALE, PREC_WOBBLE_SPEED), jetNoise(along, 2.0 + lobe, PREC_WOBBLE_SCALE, PREC_WOBBLE_SPEED), jetNoise(along, 3.0 + lobe, PREC_WOBBLE_SCALE, PREC_WOBBLE_SPEED)) * 2.0 - 1.0;
+            lateral -= sway * PREC_WOBBLE * along;
+            width *= max(0.2, 1.0 + PREC_SWELL * (jetNoise(along, 6.0 + lobe, PREC_WOBBLE_SCALE * 0.5, PREC_WOBBLE_SPEED) * 2.0 - 1.0));
+            float across = dot(lateral, lateral) / (width * width);
+            // C. 가장자리가 거칠다
+            across *= max(0.2, 1.0 + PREC_RAGGED * (valueNoise(position * PREC_RAGGED_SCALE + flow * (-uTime * PREC_RAGGED_SPEED) + vec3(0.0, lobe, 0.0)) * 2.0 - 1.0));
+            if (across < 9.0) {
+              float fade = exp(-away / PREC_LENGTH) * (PREC_BASE_WIDTH * PREC_BASE_WIDTH) / (width * width);
+              // B. 덩어리 간격과 밝기가 제각각이다
+              float k = along / PREC_KNOT_SPACING - uTime * PREC_KNOT_RATE;
+              k += PREC_KNOT_JITTER * 0.6 * (jetNoise(along, 4.0 + lobe, PREC_WOBBLE_SCALE, PREC_WOBBLE_SPEED) - 0.5);
+              float knot = pow(0.5 + 0.5 * cos(6.2831853 * k), PREC_KNOT_SHARP);
+              knot *= max(0.0, mix(1.0, 2.0 * hash13(vec3(floor(k), 5.0, lobe)), PREC_KNOT_JITTER));
+              fade *= PREC_KNOT_FLOOR + (1.0 - PREC_KNOT_FLOOR) * knot;
+              float flowGamma = 1.0 / sqrt(1.0 - PREC_SPEED * PREC_SPEED);
+              float flowShift = 1.0 / (flowGamma * (1.0 - PREC_SPEED * dot(flow, -normalize(velocity))));
+              vec3 tint = mix(uJetRed, uJetBlue, clamp(0.5 + 3.0 * (flowShift - 1.0), 0.0, 1.0));
+              color += transmit * tint * (exp(-across * across) * fade * pow(flowShift, PREC_BEAMING) * PREC_GAIN * dt);
+            }
           }
         }
       }

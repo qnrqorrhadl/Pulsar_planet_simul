@@ -68,6 +68,16 @@ test('두 제트의 덩어리(매듭) 설정이 셰이더에 들어가고 값이
   }
 });
 
+test('제트 불규칙함 조절 값이 모두 있고 셰이더에 들어간다', () => {
+  for (const [jet, name] of [[config.jet, 'JET'], [config.jetPrecessing, 'PREC']]) {
+    for (const key of ['wobble', 'wobbleScale', 'wobbleSpeed', 'swell', 'knotJitter', 'ragged', 'raggedScale', 'raggedSpeed']) {
+      assert.strictEqual(typeof jet[key], 'number', `${name} ${key}`);
+    }
+    assert.ok(jet.wobbleScale > 0 && jet.raggedScale > 0);
+    assert.match(fragment, new RegExp(`${name}_WOBBLE = ${jet.wobble.toFixed(4)};`));
+  }
+});
+
 test('프리셋이 가리키는 모양이 실제로 있다', () => {
   for (const preset of Object.values(config.presets)) {
     assert.ok(config.shapes[preset.shape], preset.shape);
