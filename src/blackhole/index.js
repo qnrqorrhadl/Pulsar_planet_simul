@@ -98,12 +98,10 @@ export function createBlackHoleMode(doc) {
   attachViewControls(canvas, state, config, onViewChange);
 
   doc.getElementById('bh-btn-reset').addEventListener('click', () => {
-    const { elevationDeg, azimuthDeg, lookYawDeg, lookPitchDeg } = config.defaults;
+    const { elevationDeg, azimuthDeg } = config.defaults;
     Object.assign(state, {
       elevationDeg,
       azimuthDeg,
-      lookYawDeg,
-      lookPitchDeg,
       distanceKm: view.defaultDistanceRs * rsKm(state.massSolar),
     });
     sliders.syncAll();
@@ -161,8 +159,6 @@ export function createBlackHoleMode(doc) {
         azimuthRad: degToRad(state.azimuthDeg),
         distance: plan.renderRs,
         zoom: plan.zoom,
-        lookYawRad: degToRad(state.lookYawDeg),
-        lookPitchRad: degToRad(state.lookPitchDeg),
         diskTime: state.diskTime,
         diskOn: state.shape.disk,
         cloudOn: state.shape.cloud,

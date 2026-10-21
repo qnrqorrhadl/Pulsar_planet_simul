@@ -5,8 +5,6 @@ export const config = {
     azimuthDeg: 0,
     massSolar: 10,
     diskSpeed: 1,
-    lookYawDeg: 0,
-    lookPitchDeg: 0,
   },
   view: {
     // 처음과 "시점 초기화"의 카메라 거리(rs). 실제 거리는 질량을 곱해서 km로 바꾼다.
@@ -17,8 +15,7 @@ export const config = {
     maxRenderRs: 60,
     maxTrueRs: 2000,
     scaleBarTargetPx: 140,
-    lookDegPerPixel: 0.1,
-    lookPitchMaxDeg: 80,
+    dragDegPerPixel: 0.3,
     zoomPerWheelUnit: 0.0015,
   },
   ranges: {

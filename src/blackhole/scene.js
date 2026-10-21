@@ -82,13 +82,13 @@ export function createBlackHoleScene(canvas, config) {
       dirty = true;
     },
     // distance: 계산할 카메라 거리(rs), zoom: 실제 카메라가 그보다 먼 정도(1이면 같음)
-    update({ elevationRad, azimuthRad, distance, zoom, lookYawRad, lookPitchRad, diskTime, diskOn, cloudOn, jetMode }) {
-      const key = `${elevationRad}|${azimuthRad}|${distance}|${zoom}|${lookYawRad}|${lookPitchRad}|${diskTime}|${diskOn}|${cloudOn}|${jetMode}`;
+    update({ elevationRad, azimuthRad, distance, zoom, diskTime, diskOn, cloudOn, jetMode }) {
+      const key = `${elevationRad}|${azimuthRad}|${distance}|${zoom}|${diskTime}|${diskOn}|${cloudOn}|${jetMode}`;
       if (!dirty && key === lastKey) return;
       lastKey = key;
       dirty = false;
 
-      const basis = cameraBasis(elevationRad, distance, azimuthRad, lookYawRad, lookPitchRad);
+      const basis = cameraBasis(elevationRad, distance, azimuthRad);
       uniforms.uCamPos.value.set(...basis.position);
       uniforms.uCamForward.value.set(...basis.forward);
       uniforms.uCamRight.value.set(...basis.right);
