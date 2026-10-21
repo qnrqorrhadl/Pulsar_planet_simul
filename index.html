@@ -23,6 +23,10 @@
     --hotspot: #ffffff;
     --disk-hot: #fff0d4;
     --disk-cool: #ff6b1a;
+    --binary-a-core: #ffe6c4;
+    --binary-a-edge: #ff8a3d;
+    --binary-b-core: #f2f8ff;
+    --binary-b-edge: #4f86ff;
     --font-body: 'IBM Plex Sans KR', 'Apple SD Gothic Neo', 'Malgun Gothic', system-ui, sans-serif;
     --font-data: 'IBM Plex Mono', ui-monospace, Menlo, Consolas, monospace;
   }
@@ -59,7 +63,8 @@
     background: var(--bg);
   }
   #scene,
-  #bh-scene {
+  #bh-scene,
+  #bn-scene {
     position: absolute;
     inset: 0;
     width: 100%;
@@ -67,9 +72,11 @@
     display: block;
   }
   #scene,
-  #bh-scene { touch-action: none; cursor: grab; }
+  #bh-scene,
+  #bn-scene { touch-action: none; cursor: grab; }
   #scene:active,
-  #bh-scene:active { cursor: grabbing; }
+  #bh-scene:active,
+  #bn-scene:active { cursor: grabbing; }
 
   .stage-title {
     position: absolute;
@@ -105,6 +112,8 @@
   .key.axis::before { border-top-style: dashed; }
   .key.beam { --swatch: var(--beam); }
   .key.observed { --swatch: var(--observed); }
+  .key.star-a { --swatch: var(--binary-a-edge); }
+  .key.star-b { --swatch: var(--binary-b-edge); }
 
   .stage-footer {
     position: absolute;
@@ -123,7 +132,8 @@
   .mode-switch { display: flex; margin-left: auto; }
   .mode-switch button { border-radius: 0; }
   .mode-switch button:first-child { border-radius: 8px 0 0 8px; }
-  .mode-switch button:last-child { border-radius: 0 8px 8px 0; margin-left: -1px; }
+  .mode-switch button:last-child { border-radius: 0 8px 8px 0; }
+  .mode-switch button + button { margin-left: -1px; }
   .mode-switch button[aria-pressed="true"] { position: relative; background: var(--surface); }
 
   .mode-error {
@@ -180,7 +190,8 @@
     color: var(--muted);
   }
 
-  #graph { display: block; width: 100%; height: 180px; }
+  #graph,
+  #bn-graph { display: block; width: 100%; height: 180px; }
   .readouts {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -195,7 +206,8 @@
     font-size: 20px;
     font-variant-numeric: tabular-nums;
   }
-  #read-peak { color: var(--observed); }
+  #read-peak,
+  #bn-read-now { color: var(--observed); }
   .status { margin: 12px 0 0; min-height: 4.2em; font-size: 13px; }
 
   .control {
@@ -227,6 +239,7 @@
   <section class="stage" aria-label="천체 3D 장면">
     <canvas id="scene" data-mode="pulsar"></canvas>
     <canvas id="bh-scene" data-mode="blackhole" hidden></canvas>
+    <canvas id="bn-scene" data-mode="binary" hidden></canvas>
 
     <header class="stage-title" data-mode="pulsar">
       <h1>펄서</h1>
@@ -237,9 +250,20 @@
       <p>빛을 휘게 하는 중력과 강착원반</p>
     </header>
 
+    <header class="stage-title" data-mode="binary" hidden>
+      <h1>식쌍성</h1>
+      <p>서로를 가리며 도는 두 별</p>
+    </header>
+
     <ul class="legend" data-mode="pulsar">
       <li class="key axis">자전축</li>
       <li class="key beam">자기축과 빛줄기</li>
+      <li class="key observed">지구 방향</li>
+    </ul>
+
+    <ul class="legend" data-mode="binary" hidden>
+      <li class="key star-a">별 A (크고 차가움)</li>
+      <li class="key star-b">별 B (작고 뜨거움)</li>
       <li class="key observed">지구 방향</li>
     </ul>
 
@@ -252,9 +276,14 @@
         <button id="bh-btn-reset" type="button">시점 초기화</button>
         <button id="bh-btn-pause" type="button" aria-pressed="false">일시정지</button>
       </div>
+      <div class="stage-actions" data-mode="binary" hidden>
+        <button id="bn-btn-view" type="button" aria-pressed="false">관측자 시점</button>
+        <button id="bn-btn-pause" type="button" aria-pressed="false">일시정지</button>
+      </div>
       <div class="mode-switch" role="group" aria-label="천체 선택">
         <button type="button" data-target="pulsar" aria-pressed="true">펄서</button>
         <button type="button" data-target="blackhole" aria-pressed="false">블랙홀</button>
+        <button type="button" data-target="binary" aria-pressed="false">식쌍성</button>
       </div>
     </div>
     <p id="mode-error" class="mode-error" role="alert" hidden></p>
@@ -330,6 +359,54 @@
           <label for="bh-ctl-speed">원반 회전 속도</label>
           <output id="bh-ctl-speed-value" for="bh-ctl-speed"></output>
           <input id="bh-ctl-speed" type="range">
+        </div>
+      </section>
+    </div>
+
+    <div class="mode-panel" data-mode="binary" hidden>
+      <section class="block">
+        <h2>관측자가 보는 밝기 (한 바퀴)</h2>
+        <canvas id="bn-graph"></canvas>
+        <dl class="readouts">
+          <div><dt>지금 밝기</dt><dd id="bn-read-now">-</dd></div>
+          <div><dt>가장 어두울 때</dt><dd id="bn-read-min">-</dd></div>
+          <div><dt>별 A가 가려질 때</dt><dd id="bn-read-a">-</dd></div>
+          <div><dt>별 B가 가려질 때</dt><dd id="bn-read-b">-</dd></div>
+        </dl>
+        <p id="bn-read-status" class="status" role="status"></p>
+      </section>
+
+      <section class="block">
+        <h2>조절</h2>
+        <div class="control">
+          <label for="bn-ctl-period">공전 주기 (화면 시간)</label>
+          <output id="bn-ctl-period-value" for="bn-ctl-period"></output>
+          <input id="bn-ctl-period" type="range">
+        </div>
+        <div class="control">
+          <label for="bn-ctl-incl">궤도 기울기 (90° = 옆에서 봄)</label>
+          <output id="bn-ctl-incl-value" for="bn-ctl-incl"></output>
+          <input id="bn-ctl-incl" type="range">
+        </div>
+        <div class="control">
+          <label for="bn-ctl-mass">질량비 (별 B ÷ 별 A)</label>
+          <output id="bn-ctl-mass-value" for="bn-ctl-mass"></output>
+          <input id="bn-ctl-mass" type="range">
+        </div>
+        <div class="control">
+          <label for="bn-ctl-sep">두 별 사이 거리 (별 A 반지름의 배수)</label>
+          <output id="bn-ctl-sep-value" for="bn-ctl-sep"></output>
+          <input id="bn-ctl-sep" type="range">
+        </div>
+        <div class="control">
+          <label for="bn-ctl-ecc">궤도 찌그러짐 (이심률)</label>
+          <output id="bn-ctl-ecc-value" for="bn-ctl-ecc"></output>
+          <input id="bn-ctl-ecc" type="range">
+        </div>
+        <div class="control">
+          <label for="bn-ctl-peri">가장 가까워지는 방향</label>
+          <output id="bn-ctl-peri-value" for="bn-ctl-peri"></output>
+          <input id="bn-ctl-peri" type="range">
         </div>
       </section>
     </div>

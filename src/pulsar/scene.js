@@ -1,46 +1,9 @@
+import { cssVar } from '../shared/css.js';
+import { clamp } from '../shared/math.js';
+import { makeBackgroundStars, makeGlowSprite } from '../shared/sky3d.js';
 import { observerDir, degToRad } from './physics.js';
 
 const THREE = window.THREE;
-
-const cssVar = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
-const clamp = (value, low, high) => Math.min(high, Math.max(low, value));
-
-function seededRandom(seed) {
-  let state = seed >>> 0;
-  return () => {
-    state = (state + 0x6d2b79f5) >>> 0;
-    let t = state;
-    t = Math.imul(t ^ (t >>> 15), t | 1);
-    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
-
-function makeGlowTexture(colorCss) {
-  const size = 128;
-  const canvas = document.createElement('canvas');
-  canvas.width = size;
-  canvas.height = size;
-  const g = canvas.getContext('2d');
-  const gradient = g.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size / 2);
-  gradient.addColorStop(0, colorCss);
-  gradient.addColorStop(1, '#000000');
-  g.fillStyle = gradient;
-  g.fillRect(0, 0, size, size);
-  return new THREE.CanvasTexture(canvas);
-}
-
-function makeGlowSprite(colorCss, opacity) {
-  return new THREE.Sprite(
-    new THREE.SpriteMaterial({
-      map: makeGlowTexture(colorCss),
-      transparent: true,
-      opacity,
-      blending: THREE.AdditiveBlending,
-      depthWrite: false,
-    })
-  );
-}
 
 // 별 표면: 가운데는 흰빛, 가장자리는 푸르고 어둡게(림 다크닝), 은은한 얼룩은 별과 함께 돈다.
 const STAR_VERTEX = `
@@ -204,32 +167,6 @@ function makeFieldLines(config, colorCss) {
   return group;
 }
 
-function makeBackgroundStars(config, colorCss) {
-  const { backgroundStars, backgroundStarRadius, backgroundSeed } = config.visual;
-  const random = seededRandom(backgroundSeed);
-  const positions = new Float32Array(backgroundStars * 3);
-  for (let i = 0; i < backgroundStars; i++) {
-    const u = random() * 2 - 1;
-    const angle = random() * Math.PI * 2;
-    const ring = Math.sqrt(1 - u * u);
-    positions[i * 3] = backgroundStarRadius * ring * Math.cos(angle);
-    positions[i * 3 + 1] = backgroundStarRadius * u;
-    positions[i * 3 + 2] = backgroundStarRadius * ring * Math.sin(angle);
-  }
-  const geometry = new THREE.BufferGeometry();
-  geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-  return new THREE.Points(
-    geometry,
-    new THREE.PointsMaterial({
-      color: new THREE.Color(colorCss),
-      size: 0.28,
-      transparent: true,
-      opacity: 0.55,
-      depthWrite: false,
-    })
-  );
-}
-
 export function createScene(canvas, config) {
   const v = config.visual;
   const beamCss = cssVar('--beam');
@@ -245,7 +182,12 @@ export function createScene(canvas, config) {
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(45, 1, 0.1, 200);
 
-  scene.add(makeBackgroundStars(config, axisCss));
+  scene.add(
+    makeBackgroundStars(
+      { count: v.backgroundStars, radius: v.backgroundStarRadius, seed: v.backgroundSeed },
+      axisCss
+    )
+  );
 
   // 고정된 자전축
   const axisGeometry = new THREE.BufferGeometry().setFromPoints([
