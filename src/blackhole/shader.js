@@ -12,7 +12,7 @@ export const BLACKHOLE_VERTEX = `
 
 // 화면의 모든 점에서 빛을 거꾸로 추적한다. 걸음 규칙은 physics.js의 traceRay와 같고,
 // 도플러와 중력 적색편이는 physics.js의 observedShift와 같은 식이다.
-export function buildBlackHoleFragment(tracing, disk, stars, jet) {
+export function buildBlackHoleFragment(tracing, disk, stars, jet, cloud, precessing) {
   return `
   uniform vec2 uResolution;
   uniform vec3 uCamPos;
@@ -29,8 +29,11 @@ export function buildBlackHoleFragment(tracing, disk, stars, jet) {
   uniform vec3 uCool;
   uniform vec3 uBackground;
   uniform float uDiskOn;
-  uniform float uJetOn;
+  uniform float uCloudOn;
+  uniform float uJetMode;
   uniform vec3 uJetColor;
+  uniform vec3 uJetBlue;
+  uniform vec3 uJetRed;
 
   const int MAX_STEPS = ${tracing.maxSteps};
   const float STEP_SCALE = ${glFloat(tracing.stepScale)};
@@ -53,6 +56,27 @@ export function buildBlackHoleFragment(tracing, disk, stars, jet) {
   const float JET_GAIN = ${glFloat(jet.gain)};
   const float JET_SPEED = ${glFloat(jet.speed)};
   const float JET_BEAMING = ${glFloat(jet.beamingPower)};
+  const float CLOUD_INNER_A = ${glFloat(cloud.innerStart)};
+  const float CLOUD_INNER_B = ${glFloat(cloud.innerEnd)};
+  const float CLOUD_OUTER_A = ${glFloat(cloud.outerStart)};
+  const float CLOUD_OUTER_B = ${glFloat(cloud.outerEnd)};
+  const float CLOUD_HEIGHT = ${glFloat(cloud.heightRatio)};
+  const float CLOUD_FALLOFF = ${glFloat(cloud.falloff)};
+  const float CLOUD_GAIN = ${glFloat(cloud.gain)};
+  const float CLOUD_SPEED = ${glFloat(cloud.speedScale)};
+  const float CLOUD_BEAMING = ${glFloat(cloud.beamingPower)};
+
+  const float PREC_START = ${glFloat(precessing.startRadius)};
+  const float PREC_BASE_WIDTH = ${glFloat(precessing.baseWidth)};
+  const float PREC_SPREAD = ${glFloat(precessing.spread)};
+  const float PREC_LENGTH = ${glFloat(precessing.length)};
+  const float PREC_GAIN = ${glFloat(precessing.gain)};
+  const float PREC_SPEED = ${glFloat(precessing.speed)};
+  const float PREC_BEAMING = ${glFloat(precessing.beamingPower)};
+  const float PREC_RATE = ${glFloat(precessing.rate)};
+  const float PREC_PITCH = ${glFloat(precessing.pitch)};
+  const float PREC_SIN = ${glFloat(Math.sin((precessing.coneDeg * Math.PI) / 180))};
+  const float PREC_COS = ${glFloat(Math.cos((precessing.coneDeg * Math.PI) / 180))};
   const vec3 BLUE_TINT = ${glVec3(disk.blueTint)};
   const vec3 RED_TINT = ${glVec3(disk.redTint)};
 
@@ -178,7 +202,7 @@ export function buildBlackHoleFragment(tracing, disk, stars, jet) {
 
       // 제트: 블랙홀 위아래 축을 따라 뿜는 가는 빛줄기. 빛이 지나는 길을 따라 조금씩 더한다(옅은 기체라 가리지 않는다).
       // 폭은 높이에 따라 퍼지고, 세기는 멀수록 약해진다. 관측자 쪽으로 오는 줄기가 더 밝다(도플러).
-      if (uJetOn > 0.5) {
+      if (uJetMode > 0.5 && uJetMode < 1.5) {
         float height = abs(position.y);
         if (height > JET_START) {
           float width = JET_BASE_WIDTH + JET_SPREAD * (height - JET_START);
@@ -190,6 +214,48 @@ export function buildBlackHoleFragment(tracing, disk, stars, jet) {
             float jetShift = 1.0 / (jetGamma * (1.0 - JET_SPEED * dot(flow, -normalize(velocity))));
             color += transmit * uJetColor * (exp(-across) * fade * pow(jetShift, JET_BEAMING) * JET_GAIN * dt);
           }
+        }
+      }
+
+      // SS 433형 제트: 줄기가 축에서 비스듬히 나가고 그 축이 천천히 돈다(세차 운동). 같은 줄기 위의 물질은
+      // 멀수록 더 일찍 나온 것이라 나선(코르크 마개 모양)을 그린다. 아래위 두 줄기가 서로 반대로 나간다.
+      // 속도 0.26c의 도플러로 다가오는 쪽은 푸르고 밝게, 멀어지는 쪽은 붉고 어둡게 보인다.
+      if (uJetMode > 1.5) {
+        float away = length(position);
+        if (away > PREC_START) {
+          float phase = uTime * PREC_RATE - away * PREC_PITCH;
+          vec3 axis = vec3(PREC_SIN * cos(phase), PREC_COS, PREC_SIN * sin(phase));
+          vec3 flow = dot(position, axis) >= 0.0 ? axis : -axis;
+          vec3 lateral = position - flow * dot(position, flow);
+          float width = PREC_BASE_WIDTH + PREC_SPREAD * away;
+          float across = dot(lateral, lateral) / (width * width);
+          if (across < 9.0) {
+            float fade = exp(-away / PREC_LENGTH) * (PREC_BASE_WIDTH * PREC_BASE_WIDTH) / (width * width);
+            float flowGamma = 1.0 / sqrt(1.0 - PREC_SPEED * PREC_SPEED);
+            float flowShift = 1.0 / (flowGamma * (1.0 - PREC_SPEED * dot(flow, -normalize(velocity))));
+            vec3 tint = mix(uJetRed, uJetBlue, clamp(0.5 + 3.0 * (flowShift - 1.0), 0.0, 1.0));
+            color += transmit * tint * (exp(-across) * fade * pow(flowShift, PREC_BEAMING) * PREC_GAIN * dt);
+          }
+        }
+      }
+
+      // 도넛 모양 뜨거운 구름: 원반 면 둘레로 부풀어 오른 옅은 기체. 빛이 지나는 길마다 더한다.
+      // 안쪽은 블랙홀 가까이까지, 두께는 중심에서 멀수록 두꺼워진다. 도는 방향 도플러로 한쪽이 훨씬 밝다.
+      if (uCloudOn > 0.5) {
+        float ringRadius = length(position.xz);
+        float thick = CLOUD_HEIGHT * max(ringRadius, 1.5);
+        float lift = position.y / thick;
+        if (lift * lift < 9.0 && rNow < CLOUD_OUTER_B) {
+          float radial = pow(max(ringRadius, 1.0), -CLOUD_FALLOFF)
+            * smoothstep(CLOUD_INNER_A, CLOUD_INNER_B, rNow)
+            * (1.0 - smoothstep(CLOUD_OUTER_A, CLOUD_OUTER_B, ringRadius));
+          float cloudSpeed = min(CLOUD_SPEED * sqrt(0.5 * HORIZON / max(ringRadius - HORIZON, 0.6)), 0.6);
+          vec3 around = normalize(vec3(-position.z, 0.0, position.x) + vec3(1e-4, 0.0, 0.0));
+          float cloudGamma = 1.0 / sqrt(1.0 - cloudSpeed * cloudSpeed);
+          float cloudShift = 1.0 / (cloudGamma * (1.0 - cloudSpeed * dot(around, -normalize(velocity))))
+            * sqrt(max(1.0 - HORIZON / rNow, 0.0));
+          vec3 glow = mix(uCool, uHot, clamp(0.35 + 0.6 * (cloudShift - 0.8), 0.0, 1.0));
+          color += transmit * glow * (radial * exp(-0.5 * lift * lift) * pow(cloudShift, CLOUD_BEAMING) * CLOUD_GAIN * dt);
         }
       }
 

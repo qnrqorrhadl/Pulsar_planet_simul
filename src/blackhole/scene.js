@@ -5,6 +5,8 @@ import { BLACKHOLE_VERTEX, buildBlackHoleFragment } from './shader.js';
 
 const THREE = window.THREE;
 
+const JET_MODES = { none: 0, straight: 1, precessing: 2 };
+
 // 화면 전체를 덮는 사각형 하나에 셰이더를 입혀 그린다.
 export function createBlackHoleScene(canvas, config) {
   const { tracing, disk } = config;
@@ -29,7 +31,10 @@ export function createBlackHoleScene(canvas, config) {
     uCool: { value: new THREE.Color(cssVar('--disk-cool')) },
     uBackground: { value: new THREE.Color(cssVar('--bg')) },
     uDiskOn: { value: 1 },
-    uJetOn: { value: 0 },
+    uCloudOn: { value: 0 },
+    uJetMode: { value: 0 },
+    uJetBlue: { value: new THREE.Color(cssVar(config.jetPrecessing.approachToken)) },
+    uJetRed: { value: new THREE.Color(cssVar(config.jetPrecessing.recedeToken)) },
     uJetColor: { value: new THREE.Color(cssVar(config.jet.colorToken)) },
   };
 
@@ -37,7 +42,7 @@ export function createBlackHoleScene(canvas, config) {
     new THREE.PlaneGeometry(2, 2),
     new THREE.ShaderMaterial({
       vertexShader: BLACKHOLE_VERTEX,
-      fragmentShader: buildBlackHoleFragment(tracing, disk, config.stars, config.jet),
+      fragmentShader: buildBlackHoleFragment(tracing, disk, config.stars, config.jet, config.cloud, config.jetPrecessing),
       uniforms,
       depthTest: false,
       depthWrite: false,
@@ -68,8 +73,8 @@ export function createBlackHoleScene(canvas, config) {
       dirty = true;
     },
     // distance: 계산할 카메라 거리(rs), zoom: 실제 카메라가 그보다 먼 정도(1이면 같음)
-    update({ elevationRad, azimuthRad, distance, zoom, lookYawRad, lookPitchRad, diskTime, diskOn, jetOn }) {
-      const key = `${elevationRad}|${azimuthRad}|${distance}|${zoom}|${lookYawRad}|${lookPitchRad}|${diskTime}|${diskOn}|${jetOn}`;
+    update({ elevationRad, azimuthRad, distance, zoom, lookYawRad, lookPitchRad, diskTime, diskOn, cloudOn, jetMode }) {
+      const key = `${elevationRad}|${azimuthRad}|${distance}|${zoom}|${lookYawRad}|${lookPitchRad}|${diskTime}|${diskOn}|${cloudOn}|${jetMode}`;
       if (!dirty && key === lastKey) return;
       lastKey = key;
       dirty = false;
@@ -83,7 +88,8 @@ export function createBlackHoleScene(canvas, config) {
       uniforms.uEscape.value = distance * tracing.escapeMargin;
       uniforms.uTime.value = diskTime;
       uniforms.uDiskOn.value = diskOn ? 1 : 0;
-      uniforms.uJetOn.value = jetOn ? 1 : 0;
+      uniforms.uCloudOn.value = cloudOn ? 1 : 0;
+      uniforms.uJetMode.value = JET_MODES[jetMode];
       renderer.render(scene, camera);
     },
   };

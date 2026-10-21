@@ -23,12 +23,22 @@ const SLIDERS = [
   { id: 'bh-ctl-speed', key: 'diskSpeed', format: formatSpeed },
 ];
 
+const SHAPE_NOTES = {
+  straight: ' 위아래로 뿜는 제트는 다가오는 쪽이 더 밝아요.',
+  precessing:
+    ' 제트가 나선으로 감겨 뻗고(축이 천천히 돌아요), 다가오는 쪽은 푸르고 멀어지는 쪽은 붉게 보여요. SS 433이 그래요.',
+};
+
 function describeView(elevationDeg, shape) {
+  if (shape.cloud) {
+    const text =
+      '얇은 원반 대신 부풀어 오른 뜨거운 구름이 돌아요. 다가오는 쪽이 훨씬 밝아서 한쪽이 초승달처럼 보이고, 가운데는 검은 그림자예요.';
+    return text + (SHAPE_NOTES[shape.jet] ?? '');
+  }
   if (!shape.disk) {
     return '원반이 없어서 블랙홀은 보이지 않아요. 뒤쪽 별빛이 휘어서 검은 그림자와 둥글게 감긴 별들이 보여요.';
   }
-  const text = describeDisk(elevationDeg);
-  return shape.jet ? `${text} 위아래로 뿜는 제트는 다가오는 쪽이 더 밝아요.` : text;
+  return describeDisk(elevationDeg) + (SHAPE_NOTES[shape.jet] ?? '');
 }
 
 function describeDisk(elevationDeg) {
@@ -107,6 +117,8 @@ export function createBlackHoleMode(doc) {
     doc.getElementById(id).addEventListener('click', () => {
       state.massSolar = preset.massSolar;
       state.distanceKm = preset.distanceRs * rsKm(preset.massSolar);
+      selectShape(preset.shape);
+      if (preset.elevationDeg !== undefined) state.elevationDeg = preset.elevationDeg;
       sliders.syncAll();
     });
   }
@@ -156,7 +168,8 @@ export function createBlackHoleMode(doc) {
         lookPitchRad: degToRad(state.lookPitchDeg),
         diskTime: state.diskTime,
         diskOn: state.shape.disk,
-        jetOn: state.shape.jet,
+        cloudOn: state.shape.cloud,
+        jetMode: state.shape.jet,
       });
       updateScaleBar(plan.trueRs, km);
 
