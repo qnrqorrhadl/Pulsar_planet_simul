@@ -63,3 +63,51 @@ export function makeBackgroundStars({ count, radius, seed }, colorCss) {
     })
   );
 }
+
+// 별 표면: 가운데는 밝고 가장자리는 어둡게(림 다크닝). corona: [{ scale, opacity }]로 번지는 빛을 겹친다.
+const STAR_VERTEX = `
+  varying vec3 vNormal;
+  varying vec3 vView;
+  void main() {
+    vec4 mv = modelViewMatrix * vec4(position, 1.0);
+    vNormal = normalize(normalMatrix * normal);
+    vView = normalize(-mv.xyz);
+    gl_Position = projectionMatrix * mv;
+  }
+`;
+
+const STAR_FRAGMENT = `
+  uniform vec3 uCore;
+  uniform vec3 uEdge;
+  uniform float uLimbPower;
+  varying vec3 vNormal;
+  varying vec3 vView;
+  void main() {
+    float mu = clamp(dot(normalize(vNormal), normalize(vView)), 0.0, 1.0);
+    gl_FragColor = vec4(mix(uEdge, uCore, pow(mu, uLimbPower)), 1.0);
+  }
+`;
+
+export function makeStarBody({ radius, coreCss, edgeCss, limbPower, corona }) {
+  const group = new THREE.Group();
+  group.add(
+    new THREE.Mesh(
+      new THREE.SphereGeometry(radius, 64, 48),
+      new THREE.ShaderMaterial({
+        vertexShader: STAR_VERTEX,
+        fragmentShader: STAR_FRAGMENT,
+        uniforms: {
+          uCore: { value: new THREE.Color(coreCss) },
+          uEdge: { value: new THREE.Color(edgeCss) },
+          uLimbPower: { value: limbPower },
+        },
+      })
+    )
+  );
+  for (const { scale, opacity } of corona) {
+    const glow = makeGlowSprite(edgeCss, opacity);
+    glow.scale.setScalar(radius * scale);
+    group.add(glow);
+  }
+  return group;
+}

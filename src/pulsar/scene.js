@@ -1,5 +1,6 @@
 import { cssVar } from '../shared/css.js';
 import { clamp } from '../shared/math.js';
+import { createOrbitCamera } from '../shared/orbit-camera.js';
 import { makeBackgroundStars, makeGlowSprite } from '../shared/sky3d.js';
 import { observerDir, degToRad } from './physics.js';
 
@@ -263,61 +264,15 @@ export function createScene(canvas, config) {
   scene.add(flashCore, flashGlow);
 
   // 시점
-  let yaw = degToRad(v.defaultYawDeg);
-  let pitch = degToRad(v.defaultPitchDeg);
-  let distance = v.cameraDistance;
   let followObserver = false;
   const viewListeners = [];
   const notifyView = () => viewListeners.forEach((listener) => listener(followObserver));
-
-  function placeCamera() {
-    const maxPitch = degToRad(v.maxPitchDeg);
-    pitch = clamp(pitch, -maxPitch, maxPitch);
-    camera.position.set(
-      distance * Math.cos(pitch) * Math.sin(yaw),
-      distance * Math.sin(pitch),
-      distance * Math.cos(pitch) * Math.cos(yaw)
-    );
-    camera.lookAt(0, 0, 0);
-  }
-
-  let dragging = false;
-  let lastX = 0;
-  let lastY = 0;
-  canvas.addEventListener('pointerdown', (event) => {
-    dragging = true;
-    lastX = event.clientX;
-    lastY = event.clientY;
-    canvas.setPointerCapture(event.pointerId);
-  });
-  canvas.addEventListener('pointermove', (event) => {
-    if (!dragging) return;
-    yaw -= (event.clientX - lastX) * v.dragSensitivity;
-    pitch += (event.clientY - lastY) * v.dragSensitivity;
-    lastX = event.clientX;
-    lastY = event.clientY;
+  const orbit = createOrbitCamera(canvas, camera, v, () => {
     if (followObserver) {
       followObserver = false;
       notifyView();
     }
   });
-  const endDrag = () => {
-    dragging = false;
-  };
-  canvas.addEventListener('pointerup', endDrag);
-  canvas.addEventListener('pointercancel', endDrag);
-  canvas.addEventListener(
-    'wheel',
-    (event) => {
-      event.preventDefault();
-      distance = clamp(
-        distance * (1 + event.deltaY * v.zoomSensitivity),
-        v.cameraDistanceMin,
-        v.cameraDistanceMax
-      );
-    },
-    { passive: false }
-  );
 
   function resize() {
     const width = canvas.clientWidth;
@@ -352,11 +307,8 @@ export function createScene(canvas, config) {
       flashGlow.material.opacity = intensity;
       flashGlow.scale.setScalar(0.6 + 2.2 * intensity);
 
-      if (followObserver) {
-        yaw = Math.atan2(x, z);
-        pitch = Math.asin(clamp(y, -1, 1));
-      }
-      placeCamera();
+      if (followObserver) orbit.setView(Math.atan2(x, z), Math.asin(clamp(y, -1, 1)));
+      orbit.place();
       renderer.render(scene, camera);
     },
   };

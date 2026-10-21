@@ -1,6 +1,7 @@
 import { createPulsarMode } from './pulsar/index.js';
 import { createBlackHoleMode } from './blackhole/index.js';
 import { createBinaryMode } from './binary/index.js';
+import { createInspiralMode } from './inspiral/index.js';
 
 const MAX_FRAME_SECONDS = 0.1;
 const ERROR_MESSAGE =
@@ -10,6 +11,7 @@ const MODE_FACTORIES = {
   pulsar: createPulsarMode,
   blackhole: createBlackHoleMode,
   binary: createBinaryMode,
+  inspiral: createInspiralMode,
 };
 
 const instances = {};

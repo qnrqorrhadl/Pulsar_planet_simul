@@ -27,6 +27,11 @@
     --binary-a-edge: #ff8a3d;
     --binary-b-core: #f2f8ff;
     --binary-b-edge: #4f86ff;
+    --ns-a-core: #eaf6ff;
+    --ns-a-edge: #4f9bff;
+    --ns-b-core: #fbeaff;
+    --ns-b-edge: #b06bff;
+    --ns-merge: #fff3d6;
     --font-body: 'IBM Plex Sans KR', 'Apple SD Gothic Neo', 'Malgun Gothic', system-ui, sans-serif;
     --font-data: 'IBM Plex Mono', ui-monospace, Menlo, Consolas, monospace;
   }
@@ -64,7 +69,8 @@
   }
   #scene,
   #bh-scene,
-  #bn-scene {
+  #bn-scene,
+  #in-scene {
     position: absolute;
     inset: 0;
     width: 100%;
@@ -73,10 +79,12 @@
   }
   #scene,
   #bh-scene,
-  #bn-scene { touch-action: none; cursor: grab; }
+  #bn-scene,
+  #in-scene { touch-action: none; cursor: grab; }
   #scene:active,
   #bh-scene:active,
-  #bn-scene:active { cursor: grabbing; }
+  #bn-scene:active,
+  #in-scene:active { cursor: grabbing; }
 
   .stage-title {
     position: absolute;
@@ -114,6 +122,8 @@
   .key.observed { --swatch: var(--observed); }
   .key.star-a { --swatch: var(--binary-a-edge); }
   .key.star-b { --swatch: var(--binary-b-edge); }
+  .key.ns-a { --swatch: var(--ns-a-edge); }
+  .key.ns-b { --swatch: var(--ns-b-edge); }
 
   .stage-footer {
     position: absolute;
@@ -191,7 +201,8 @@
   }
 
   #graph,
-  #bn-graph { display: block; width: 100%; height: 180px; }
+  #bn-graph,
+  #in-graph { display: block; width: 100%; height: 180px; }
   .readouts {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -207,7 +218,8 @@
     font-variant-numeric: tabular-nums;
   }
   #read-peak,
-  #bn-read-now { color: var(--observed); }
+  #bn-read-now,
+  #in-read-freq { color: var(--observed); }
   .status { margin: 12px 0 0; min-height: 4.2em; font-size: 13px; }
 
   .control {
@@ -240,6 +252,7 @@
     <canvas id="scene" data-mode="pulsar"></canvas>
     <canvas id="bh-scene" data-mode="blackhole" hidden></canvas>
     <canvas id="bn-scene" data-mode="binary" hidden></canvas>
+    <canvas id="in-scene" data-mode="inspiral" hidden></canvas>
 
     <header class="stage-title" data-mode="pulsar">
       <h1>펄서</h1>
@@ -255,6 +268,11 @@
       <p>서로를 가리며 도는 두 별</p>
     </header>
 
+    <header class="stage-title" data-mode="inspiral" hidden>
+      <h1>쌍성 병합</h1>
+      <p>중력파를 내며 다가와 합쳐지는 두 중성자별</p>
+    </header>
+
     <ul class="legend" data-mode="pulsar">
       <li class="key axis">자전축</li>
       <li class="key beam">자기축과 빛줄기</li>
@@ -265,6 +283,11 @@
       <li class="key star-a">별 A (크고 차가움)</li>
       <li class="key star-b">별 B (작고 뜨거움)</li>
       <li class="key observed">지구 방향</li>
+    </ul>
+
+    <ul class="legend" data-mode="inspiral" hidden>
+      <li class="key ns-a">중성자별 1</li>
+      <li class="key ns-b">중성자별 2</li>
     </ul>
 
     <div class="stage-footer">
@@ -280,10 +303,15 @@
         <button id="bn-btn-view" type="button" aria-pressed="false">관측자 시점</button>
         <button id="bn-btn-pause" type="button" aria-pressed="false">일시정지</button>
       </div>
+      <div class="stage-actions" data-mode="inspiral" hidden>
+        <button id="in-btn-restart" type="button">다시 시작</button>
+        <button id="in-btn-pause" type="button" aria-pressed="false">일시정지</button>
+      </div>
       <div class="mode-switch" role="group" aria-label="천체 선택">
         <button type="button" data-target="pulsar" aria-pressed="true">펄서</button>
         <button type="button" data-target="blackhole" aria-pressed="false">블랙홀</button>
         <button type="button" data-target="binary" aria-pressed="false">식쌍성</button>
+        <button type="button" data-target="inspiral" aria-pressed="false">쌍성 병합</button>
       </div>
     </div>
     <p id="mode-error" class="mode-error" role="alert" hidden></p>
@@ -407,6 +435,44 @@
           <label for="bn-ctl-peri">가장 가까워지는 방향</label>
           <output id="bn-ctl-peri-value" for="bn-ctl-peri"></output>
           <input id="bn-ctl-peri" type="range">
+        </div>
+      </section>
+    </div>
+
+    <div class="mode-panel" data-mode="inspiral" hidden>
+      <section class="block">
+        <h2>중력파 주파수 (소리의 높낮이)</h2>
+        <canvas id="in-graph"></canvas>
+        <dl class="readouts">
+          <div><dt>두 별 사이 거리</dt><dd id="in-read-sep">-</dd></div>
+          <div><dt>서로 도는 속도</dt><dd id="in-read-speed">-</dd></div>
+          <div><dt>중력파 주파수</dt><dd id="in-read-freq">-</dd></div>
+          <div><dt>합쳐질 때까지 (실제 시간)</dt><dd id="in-read-left">-</dd></div>
+        </dl>
+        <p id="in-read-status" class="status" role="status"></p>
+      </section>
+
+      <section class="block">
+        <h2>조절 (바꾸면 처음부터 다시)</h2>
+        <div class="control">
+          <label for="in-ctl-mass1">중성자별 1 질량</label>
+          <output id="in-ctl-mass1-value" for="in-ctl-mass1"></output>
+          <input id="in-ctl-mass1" type="range">
+        </div>
+        <div class="control">
+          <label for="in-ctl-mass2">중성자별 2 질량</label>
+          <output id="in-ctl-mass2-value" for="in-ctl-mass2"></output>
+          <input id="in-ctl-mass2" type="range">
+        </div>
+        <div class="control">
+          <label for="in-ctl-start">처음 두 별 사이 거리</label>
+          <output id="in-ctl-start-value" for="in-ctl-start"></output>
+          <input id="in-ctl-start" type="range">
+        </div>
+        <div class="control">
+          <label for="in-ctl-slow">슬로모션 (실제 시간 대비)</label>
+          <output id="in-ctl-slow-value" for="in-ctl-slow"></output>
+          <input id="in-ctl-slow" type="range">
         </div>
       </section>
     </div>
