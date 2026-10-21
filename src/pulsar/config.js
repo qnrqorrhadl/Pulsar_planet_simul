@@ -1,0 +1,63 @@
+// 모든 조절 범위와 기본값은 여기서만 정한다. 기본값은 게성운 펄서(주기 약 33ms) 기준.
+export const config = {
+  defaults: {
+    periodMs: 33,
+    slowMotion: 0.02,
+    tiltDeg: 45,
+    observerDeg: 60,
+  },
+  ranges: {
+    periodMs: { min: 1, max: 5000, log: true },
+    slowMotion: { min: 0.001, max: 1, log: true },
+    tiltDeg: { min: 0, max: 90, log: false },
+    observerDeg: { min: 0, max: 180, log: false },
+  },
+  beamHalfWidthDeg: 12,
+  pulseThreshold: 0.5,
+  graph: {
+    periods: 3,
+    points: 480,
+  },
+  visual: {
+    starRadius: 1,
+    axisLength: 2.6,
+    beamLength: 3.4,
+    observerLength: 3.6,
+    cameraDistance: 8.5,
+    cameraDistanceMin: 4,
+    cameraDistanceMax: 16,
+    defaultYawDeg: 35,
+    defaultPitchDeg: 22,
+    maxPitchDeg: 88,
+    pointHaloRadius: 0.13,
+    backgroundStars: 600,
+    backgroundSeed: 7,
+    backgroundStarRadius: 60,
+    dragSensitivity: 0.006,
+    zoomSensitivity: 0.0015,
+    fastRotationWarnSeconds: 0.4,
+    star: {
+      limbPower: 0.55,
+      mottle: 0.35,
+      noiseScaleLarge: 3,
+      noiseScaleSmall: 8,
+      hotspotGlowScale: 1.1,
+      hotspotGlowOpacity: 0.95,
+    },
+    corona: [
+      { scale: 3.2, opacity: 0.6 },
+      { scale: 6.4, opacity: 0.22 },
+    ],
+    beam: {
+      opacity: 0.55,
+      falloff: 1.5,
+      edgeSoftness: 0.9,
+    },
+    fieldLines: {
+      count: 8,
+      shells: [2.0, 3.0],
+      segments: 64,
+      opacity: 0.4,
+    },
+  },
+};

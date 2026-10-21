@@ -1,0 +1,335 @@
+<title>펄서 시뮬레이터</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+KR:wght@400;600&display=swap">
+<style>
+  /* 레이아웃: 왼쪽은 3D 관측창, 오른쪽은 설명 수치와 조절판. 좁은 화면에서는 위아래로 쌓는다. 어두운 관측실 한 가지 모습으로 고정한다. 천체 모드(펄서, 블랙홀)마다 data-mode가 붙은 요소만 보인다. */
+  :root {
+    color-scheme: dark;
+    --bg: #0a0e19;
+    --surface: #111729;
+    --surface-2: #18203a;
+    --line: #25304d;
+    --fg: #e8edf8;
+    --muted: #8e9ab8;
+    --beam: #6fd3ff;
+    --observed: #ffb454;
+    --axis: #a9b4d0;
+    --star-core: #f4f9ff;
+    --star-edge: #3f6df0;
+    --star-glow: #6e9dff;
+    --hotspot: #ffffff;
+    --disk-hot: #fff0d4;
+    --disk-cool: #ff6b1a;
+    --font-body: 'IBM Plex Sans KR', 'Apple SD Gothic Neo', 'Malgun Gothic', system-ui, sans-serif;
+    --font-data: 'IBM Plex Mono', ui-monospace, Menlo, Consolas, monospace;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--fg);
+    font-family: var(--font-body);
+    font-size: 14px;
+    line-height: 1.5;
+    padding-block: 16px;
+    padding-left: max(16px, env(safe-area-inset-left, 0px));
+    padding-right: max(16px, env(safe-area-inset-right, 0px));
+  }
+
+  .app {
+    height: 100%;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 360px;
+    gap: 16px;
+  }
+
+  .stage {
+    position: relative;
+    min-height: 0;
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    overflow: hidden;
+    background: var(--bg);
+  }
+  #scene,
+  #bh-scene {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    display: block;
+  }
+  #scene,
+  #bh-scene { touch-action: none; cursor: grab; }
+  #scene:active,
+  #bh-scene:active { cursor: grabbing; }
+
+  .stage-title {
+    position: absolute;
+    left: 16px;
+    top: 14px;
+    pointer-events: none;
+  }
+  h1 { margin: 0; font-size: 18px; font-weight: 600; letter-spacing: 0.01em; }
+  .stage-title p { margin: 2px 0 0; font-size: 12px; color: var(--muted); }
+
+  .legend {
+    position: absolute;
+    right: 14px;
+    top: 14px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    display: grid;
+    gap: 6px;
+    font-size: 12px;
+    color: var(--muted);
+    pointer-events: none;
+  }
+  .key::before {
+    content: "";
+    display: inline-block;
+    width: 18px;
+    margin-right: 8px;
+    vertical-align: middle;
+    border-top: 2px solid var(--swatch);
+  }
+  .key.axis { --swatch: var(--axis); }
+  .key.axis::before { border-top-style: dashed; }
+  .key.beam { --swatch: var(--beam); }
+  .key.observed { --swatch: var(--observed); }
+
+  .stage-footer {
+    position: absolute;
+    left: 14px;
+    right: 14px;
+    bottom: 14px;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 8px;
+    pointer-events: none;
+  }
+  .stage-footer > * { pointer-events: auto; }
+  .stage-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+  .mode-switch { display: flex; margin-left: auto; }
+  .mode-switch button { border-radius: 0; }
+  .mode-switch button:first-child { border-radius: 8px 0 0 8px; }
+  .mode-switch button:last-child { border-radius: 0 8px 8px 0; margin-left: -1px; }
+  .mode-switch button[aria-pressed="true"] { position: relative; background: var(--surface); }
+
+  .mode-error {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    max-width: 80%;
+    margin: 0;
+    padding: 12px 16px;
+    transform: translate(-50%, -50%);
+    text-align: center;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+  }
+
+  button {
+    font: inherit;
+    color: var(--fg);
+    background: var(--surface-2);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 8px 14px;
+    min-height: 40px;
+    cursor: pointer;
+  }
+  button:hover { border-color: var(--muted); }
+  button:active { background: var(--line); }
+  button[aria-pressed="true"] { border-color: var(--beam); color: var(--beam); }
+  button:focus-visible,
+  input:focus-visible { outline: 2px solid var(--beam); outline-offset: 2px; }
+
+  .panel {
+    min-height: 0;
+    overflow-y: auto;
+  }
+  .mode-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+  .block {
+    min-width: 0;
+    padding: 16px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+  }
+  h2 {
+    margin: 0 0 12px;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    color: var(--muted);
+  }
+
+  #graph { display: block; width: 100%; height: 180px; }
+  .readouts {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin: 12px 0 0;
+  }
+  h2 + .readouts { margin-top: 0; }
+  .readouts dt { font-size: 12px; color: var(--muted); }
+  .readouts dd {
+    margin: 0;
+    font-family: var(--font-data);
+    font-size: 20px;
+    font-variant-numeric: tabular-nums;
+  }
+  #read-peak { color: var(--observed); }
+  .status { margin: 12px 0 0; min-height: 4.2em; font-size: 13px; }
+
+  .control {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    column-gap: 12px;
+    row-gap: 6px;
+    align-items: baseline;
+    margin-bottom: 16px;
+  }
+  .control:last-child { margin-bottom: 0; }
+  .control input { grid-column: 1 / -1; }
+  output {
+    font-family: var(--font-data);
+    font-size: 13px;
+    font-variant-numeric: tabular-nums;
+  }
+  input[type="range"] { width: 100%; height: 24px; margin: 0; accent-color: var(--beam); }
+
+  @media (max-width: 860px) {
+    html, body { height: auto; }
+    .app { height: auto; grid-template-columns: minmax(0, 1fr); }
+    .stage { height: min(62vh, 480px); }
+    .panel { overflow: visible; }
+  }
+</style>
+
+<div class="app">
+  <section class="stage" aria-label="천체 3D 장면">
+    <canvas id="scene" data-mode="pulsar"></canvas>
+    <canvas id="bh-scene" data-mode="blackhole" hidden></canvas>
+
+    <header class="stage-title" data-mode="pulsar">
+      <h1>펄서</h1>
+      <p>회전하는 중성자별과 두 줄기 빛</p>
+    </header>
+    <header class="stage-title" data-mode="blackhole" hidden>
+      <h1>블랙홀</h1>
+      <p>빛을 휘게 하는 중력과 강착원반</p>
+    </header>
+
+    <ul class="legend" data-mode="pulsar">
+      <li class="key axis">자전축</li>
+      <li class="key beam">자기축과 빛줄기</li>
+      <li class="key observed">지구 방향</li>
+    </ul>
+
+    <div class="stage-footer">
+      <div class="stage-actions" data-mode="pulsar">
+        <button id="btn-view" type="button" aria-pressed="false">관측자 시점</button>
+        <button id="btn-pause" type="button" aria-pressed="false">일시정지</button>
+      </div>
+      <div class="stage-actions" data-mode="blackhole" hidden>
+        <button id="bh-btn-reset" type="button">시점 초기화</button>
+        <button id="bh-btn-pause" type="button" aria-pressed="false">일시정지</button>
+      </div>
+      <div class="mode-switch" role="group" aria-label="천체 선택">
+        <button type="button" data-target="pulsar" aria-pressed="true">펄서</button>
+        <button type="button" data-target="blackhole" aria-pressed="false">블랙홀</button>
+      </div>
+    </div>
+    <p id="mode-error" class="mode-error" role="alert" hidden></p>
+  </section>
+
+  <aside class="panel">
+    <div class="mode-panel" data-mode="pulsar">
+      <section class="block">
+        <h2>관측자가 보는 밝기</h2>
+        <canvas id="graph"></canvas>
+        <dl class="readouts">
+          <div><dt>최대 밝기</dt><dd id="read-peak">-</dd></div>
+          <div><dt>화면에서 한 바퀴</dt><dd id="read-rotation">-</dd></div>
+        </dl>
+        <p id="read-status" class="status" role="status"></p>
+      </section>
+
+      <section class="block">
+        <h2>조절</h2>
+        <div class="control">
+          <label for="ctl-period">자전 주기</label>
+          <output id="ctl-period-value" for="ctl-period"></output>
+          <input id="ctl-period" type="range">
+        </div>
+        <div class="control">
+          <label for="ctl-slow">슬로모션</label>
+          <output id="ctl-slow-value" for="ctl-slow"></output>
+          <input id="ctl-slow" type="range">
+        </div>
+        <div class="control">
+          <label for="ctl-tilt">자기축 기울기</label>
+          <output id="ctl-tilt-value" for="ctl-tilt"></output>
+          <input id="ctl-tilt" type="range">
+        </div>
+        <div class="control">
+          <label for="ctl-observer">관측자 방향 (자전축 기준)</label>
+          <output id="ctl-observer-value" for="ctl-observer"></output>
+          <input id="ctl-observer" type="range">
+        </div>
+      </section>
+    </div>
+
+    <div class="mode-panel" data-mode="blackhole" hidden>
+      <section class="block">
+        <h2>크기 기준 (1 rs = 사건의 지평선 반지름)</h2>
+        <dl class="readouts">
+          <div><dt>사건의 지평선</dt><dd id="bh-read-horizon">-</dd></div>
+          <div><dt>광자 고리</dt><dd id="bh-read-ring">-</dd></div>
+          <div><dt>원반 안쪽 끝</dt><dd id="bh-read-isco">-</dd></div>
+          <div><dt>그림자 반지름</dt><dd id="bh-read-shadow">-</dd></div>
+        </dl>
+        <p id="bh-read-status" class="status" role="status"></p>
+      </section>
+
+      <section class="block">
+        <h2>조절</h2>
+        <div class="control">
+          <label for="bh-ctl-angle">관측 각도 (원반 면 기준)</label>
+          <output id="bh-ctl-angle-value" for="bh-ctl-angle"></output>
+          <input id="bh-ctl-angle" type="range">
+        </div>
+        <div class="control">
+          <label for="bh-ctl-azimuth">방위각 (위치 돌기)</label>
+          <output id="bh-ctl-azimuth-value" for="bh-ctl-azimuth"></output>
+          <input id="bh-ctl-azimuth" type="range">
+        </div>
+        <div class="control">
+          <label for="bh-ctl-distance">카메라 거리</label>
+          <output id="bh-ctl-distance-value" for="bh-ctl-distance"></output>
+          <input id="bh-ctl-distance" type="range">
+        </div>
+        <div class="control">
+          <label for="bh-ctl-speed">원반 회전 속도</label>
+          <output id="bh-ctl-speed-value" for="bh-ctl-speed"></output>
+          <input id="bh-ctl-speed" type="range">
+        </div>
+      </section>
+    </div>
+  </aside>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script type="module" src="src/main.js"></script>

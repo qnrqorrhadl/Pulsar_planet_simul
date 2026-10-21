@@ -1,0 +1,11 @@
+{
+  "name": "pulsar-sim",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test test/*.test.js"
+  },
+  "devDependencies": {
+    "@shaderfrog/glsl-parser": "^7.0.1"
+  }
+}
