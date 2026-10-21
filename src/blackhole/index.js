@@ -75,6 +75,11 @@ export function createBlackHoleMode(doc) {
     state.shape = config.shapes[name];
   };
   selectShape(config.defaultShape);
+  const selectDiskStyle = (name) => {
+    state.diskStyle = config.diskStyles[name];
+    scene.setDiskStyle(state.diskStyle);
+  };
+  selectDiskStyle(config.defaultDiskStyle);
 
   // 질량을 키우면 같은 거리가 rs로는 가까워진다. 최소 거리보다 가까워지면 카메라를 뒤로 민다.
   function enforceLimits() {
@@ -109,6 +114,7 @@ export function createBlackHoleMode(doc) {
       state.massSolar = preset.massSolar;
       state.distanceKm = preset.distanceRs * rsKm(preset.massSolar);
       selectShape(preset.shape);
+      selectDiskStyle(preset.diskStyle ?? config.defaultDiskStyle);
       if (preset.elevationDeg !== undefined) state.elevationDeg = preset.elevationDeg;
       sliders.syncAll();
     });
@@ -169,7 +175,7 @@ export function createBlackHoleMode(doc) {
       const diskLength = (rs) => (state.shape.disk ? formatLength(rs * km) : '없음');
       setText(readouts.isco, diskLength(ISCO));
       setText(readouts.shadow, formatLength(CRITICAL_IMPACT * km));
-      setText(readouts.disk, diskLength(config.disk.outerRadius));
+      setText(readouts.disk, diskLength(state.diskStyle.outerRadius));
       setText(readouts.camera, `${Math.round(plan.trueRs)} rs`);
 
       let status = describeView(state.elevationDeg, state.shape);

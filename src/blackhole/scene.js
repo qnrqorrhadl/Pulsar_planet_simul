@@ -26,6 +26,7 @@ export function createBlackHoleScene(canvas, config) {
     uEscape: { value: 1 },
     uInner: { value: ISCO },
     uOuter: { value: disk.outerRadius },
+    uDiskGain: { value: 1 },
     uTime: { value: 0 },
     uHot: { value: new THREE.Color(cssVar('--disk-hot')) },
     uCool: { value: new THREE.Color(cssVar('--disk-cool')) },
@@ -69,6 +70,14 @@ export function createBlackHoleScene(canvas, config) {
   resize();
 
   return {
+    // 원반 옷 바꾸기: 색, 바깥 반지름, 밝기
+    setDiskStyle(style) {
+      uniforms.uHot.value.set(cssVar(style.hotToken));
+      uniforms.uCool.value.set(cssVar(style.coolToken));
+      uniforms.uOuter.value = style.outerRadius;
+      uniforms.uDiskGain.value = style.gain;
+      dirty = true;
+    },
     invalidate() {
       dirty = true;
     },

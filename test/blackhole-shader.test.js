@@ -78,6 +78,17 @@ test('제트 불규칙함 조절 값이 모두 있고 셰이더에 들어간다'
   }
 });
 
+test('프리셋이 가리키는 원반 옷이 실제로 있고 값이 올바르다', () => {
+  assert.ok(config.diskStyles[config.defaultDiskStyle]);
+  for (const preset of Object.values(config.presets)) {
+    if (preset.diskStyle !== undefined) assert.ok(config.diskStyles[preset.diskStyle], preset.diskStyle);
+  }
+  for (const style of Object.values(config.diskStyles)) {
+    assert.ok(style.gain > 0 && style.outerRadius > 3);
+    assert.match(fragment, /uniform float uDiskGain;/);
+  }
+});
+
 test('프리셋이 가리키는 모양이 실제로 있다', () => {
   for (const preset of Object.values(config.presets)) {
     assert.ok(config.shapes[preset.shape], preset.shape);

@@ -24,6 +24,7 @@ export function buildBlackHoleFragment(tracing, disk, stars, jet, cloud, precess
   uniform float uEscape;
   uniform float uInner;
   uniform float uOuter;
+  uniform float uDiskGain;
   uniform float uTime;
   uniform vec3 uHot;
   uniform vec3 uCool;
@@ -184,7 +185,7 @@ export function buildBlackHoleFragment(tracing, disk, stars, jet, cloud, precess
     float swirl = 0.5 + 0.5 * sin(
       SWIRL_ARMS * angle + SWIRL_TIGHTNESS * radius - uTime * SWIRL_RATE * pow(radius, -1.5)
     );
-    float brightness = (BRIGHT_BASE + BRIGHT_HEAT * heat) * (0.7 + 0.3 * swirl);
+    float brightness = (BRIGHT_BASE + BRIGHT_HEAT * heat) * (0.7 + 0.3 * swirl) * uDiskGain;
 
     vec3 tangent = normalize(vec3(-hit.z, 0.0, hit.x));
     float speed = sqrt(0.5 * HORIZON / (radius - HORIZON));

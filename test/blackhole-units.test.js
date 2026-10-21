@@ -78,4 +78,7 @@ test('질량을 두 배로 하면 같은 거리에서 화면 속 크기도 두 �
 
 test('카메라 최소 거리는 원반 바깥 반지름보다 크다', () => {
   assert.ok(config.view.minRs > config.disk.outerRadius);
+  for (const style of Object.values(config.diskStyles)) {
+    assert.ok(config.view.minRs > style.outerRadius);
+  }
 });

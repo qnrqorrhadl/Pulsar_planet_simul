@@ -43,6 +43,15 @@ export const config = {
     blueTint: [0.75, 0.9, 1.4],
     redTint: [1.3, 0.8, 0.55],
   },
+  // 원반 옷(프리셋이 고른다): 뜨거운 쪽·식은 쪽 색(index.html 토큰), 바깥 반지름(rs, 카메라 최소 거리보다 작게), 밝기 배율
+  diskStyles: {
+    standard: { hotToken: '--disk-hot', coolToken: '--disk-cool', outerRadius: 10, gain: 1 },
+    // 궁수자리 A*: 먹는 양이 아주 적어 작고 어둡고 붉다
+    hungry: { hotToken: '--disk-sgr-hot', coolToken: '--disk-sgr-cool', outerRadius: 8, gain: 0.55 },
+    // SS 433: 한계 이상으로 먹어서 크고 뜨겁고 푸른 흰색이다
+    feasting: { hotToken: '--disk-ss-hot', coolToken: '--disk-ss-cool', outerRadius: 10, gain: 1.35 },
+  },
+  defaultDiskStyle: 'standard',
   stars: {
     scale: 80,
     density: 0.3,
@@ -147,13 +156,13 @@ export const config = {
   // 홀로 떠도는 별 블랙홀은 보이지 않고, 궁수자리 A*는 흐릿한 원반, M87*은 도넛 모양 구름과 제트(EHT 사진),
   // SS 433은 원반과 나선으로 도는 제트를 가진다.
   presets: {
-    'bh-preset-stellar': { massSolar: 10, distanceRs: 25, shape: 'bare' },
-    'bh-preset-sgr': { massSolar: 4.3e6, distanceRs: 25, shape: 'disk' },
+    'bh-preset-stellar': { massSolar: 10, distanceRs: 25, shape: 'bare', diskStyle: 'standard' },
+    'bh-preset-sgr': { massSolar: 4.3e6, distanceRs: 25, shape: 'disk', diskStyle: 'hungry' },
     // M87*은 EHT 사진처럼 거의 위에서(제트 축에서 약 17°) 본다
-    'bh-preset-m87': { massSolar: 6.5e9, distanceRs: 25, shape: 'cloudjet', elevationDeg: 73 },
+    'bh-preset-m87': { massSolar: 6.5e9, distanceRs: 25, shape: 'cloudjet', diskStyle: 'standard', elevationDeg: 73 },
     // 질량은 아직 정확히 모른다(대략 10~20배)
     // SS 433은 원반을 거의 옆에서(약 11°) 본다
-    'bh-preset-ss433': { massSolar: 15, distanceRs: 25, shape: 'precess', elevationDeg: 11 },
+    'bh-preset-ss433': { massSolar: 15, distanceRs: 25, shape: 'precess', diskStyle: 'feasting', elevationDeg: 11 },
   },
   hints: {
     edgeOnMaxDeg: 5,
