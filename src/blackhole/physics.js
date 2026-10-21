@@ -9,6 +9,26 @@ export const PHOTON_SPHERE = 1.5;
 export const ISCO = 3;
 export const CRITICAL_IMPACT = (3 * Math.sqrt(3)) / 2;
 
+// 슈바르츠실트 반지름 rs = 2GM/c². 태양 질량 1개일 때 약 2.953 km, 질량에 비례한다.
+export const SCHWARZSCHILD_KM_PER_SOLAR_MASS = 2.95325;
+export const rsKm = (solarMasses) => solarMasses * SCHWARZSCHILD_KM_PER_SOLAR_MASS;
+
+// 실제 카메라 거리(km)를 계산용 거리로 바꾼다. 길이 단위는 rs.
+// 계산은 render 거리에서 하고(너무 멀면 광선이 모자라서 minRs..maxRenderRs로 제한), 더 먼 만큼은
+// 시야를 넓혀(zoom > 1) 블랙홀이 그만큼 작게 보이게 한다. 너무 가까우면 minRs에서 멈춘다.
+export function viewPlan(distanceKm, solarMasses, limits) {
+  const wanted = distanceKm / rsKm(solarMasses);
+  const trueRs = clamp(wanted, limits.minRs, limits.maxTrueRs);
+  const renderRs = clamp(trueRs, limits.minRs, limits.maxRenderRs);
+  return {
+    trueRs,
+    renderRs,
+    zoom: trueRs / renderRs,
+    tooNear: wanted < limits.minRs,
+    tooFar: wanted > limits.maxTrueRs,
+  };
+}
+
 const add = (a, b) => [a[0] + b[0], a[1] + b[1], a[2] + b[2]];
 const scale = (a, k) => [a[0] * k, a[1] * k, a[2] * k];
 const dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];

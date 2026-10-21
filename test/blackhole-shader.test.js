@@ -25,6 +25,12 @@ test('설정 값이 셰이더에 들어간다', () => {
   assert.match(fragment, new RegExp(`BAND_WIDTH = ${band.bandWidth.toFixed(4)};`));
 });
 
+test('먼 카메라의 시선 보정이 셰이더에 들어간다', () => {
+  assert.match(fragment, /uniform float uTanHalfTrue;/);
+  assert.match(fragment, /vec3 initialTrue/);
+  assert.match(fragment, /backdrop = transmit \* \(uBackground \+ milkyWay\(sky\) \+ starfield\(sky\)\)/);
+});
+
 test('은하수 띠가 배경에 더해진다', () => {
   assert.match(fragment, /vec3 milkyWay\(vec3 dir\)/);
   assert.match(fragment, /uBackground \+ milkyWay\(sky\) \+ starfield\(sky\)/);

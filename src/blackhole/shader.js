@@ -20,6 +20,7 @@ export function buildBlackHoleFragment(tracing, disk, stars) {
   uniform vec3 uCamRight;
   uniform vec3 uCamUp;
   uniform float uTanHalfFov;
+  uniform float uTanHalfTrue;
   uniform float uEscape;
   uniform float uInner;
   uniform float uOuter;
@@ -142,6 +143,11 @@ export function buildBlackHoleFragment(tracing, disk, stars) {
     vec3 velocity = normalize(
       uCamForward + 2.0 * uTanHalfFov * (uv.x * uCamRight + uv.y * uCamUp)
     );
+    // 실제 카메라가 이보다 멀면(uTanHalfFov > uTanHalfTrue) 같은 화소의 실제 시선 방향은 중심 쪽으로 더 모여 있다.
+    vec3 initial = velocity;
+    vec3 initialTrue = normalize(
+      uCamForward + 2.0 * uTanHalfTrue * (uv.x * uCamRight + uv.y * uCamUp)
+    );
     vec3 position = uCamPos;
     vec3 angular = cross(position, velocity);
     float h2 = dot(angular, angular);
@@ -183,6 +189,19 @@ export function buildBlackHoleFragment(tracing, disk, stars) {
     vec3 backdrop = vec3(0.0);
     if (escaped) {
       vec3 sky = normalize(velocity);
+      // 빛이 휜 각도는 그대로 두고, 휘기 전 방향만 실제 시선으로 바꿔 하늘의 어느 곳이 보이는지 맞춘다.
+      // (시야를 넓히지 않았으면 initialTrue == initial이라 sky가 그대로다.)
+      vec3 turnAxis = cross(initial, sky);
+      if (length(turnAxis) > 1e-6) {
+        vec3 k = normalize(turnAxis);
+        float turn = acos(clamp(dot(initial, sky), -1.0, 1.0));
+        sky = normalize(
+          initialTrue * cos(turn) + cross(k, initialTrue) * sin(turn)
+          + k * dot(k, initialTrue) * (1.0 - cos(turn))
+        );
+      } else {
+        sky = initialTrue;
+      }
       backdrop = transmit * (uBackground + milkyWay(sky) + starfield(sky));
     }
     gl_FragColor = vec4(color + backdrop, 1.0);

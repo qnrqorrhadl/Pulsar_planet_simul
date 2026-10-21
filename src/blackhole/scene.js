@@ -8,6 +8,7 @@ const THREE = window.THREE;
 // 화면 전체를 덮는 사각형 하나에 셰이더를 입혀 그린다.
 export function createBlackHoleScene(canvas, config) {
   const { tracing, disk } = config;
+  const trueTanHalf = Math.tan(degToRad(tracing.fovDeg) / 2);
 
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: false });
   renderer.setPixelRatio(tracing.renderScale);
@@ -19,6 +20,7 @@ export function createBlackHoleScene(canvas, config) {
     uCamRight: { value: new THREE.Vector3() },
     uCamUp: { value: new THREE.Vector3() },
     uTanHalfFov: { value: Math.tan(degToRad(tracing.fovDeg) / 2) },
+    uTanHalfTrue: { value: Math.tan(degToRad(tracing.fovDeg) / 2) },
     uEscape: { value: 1 },
     uInner: { value: ISCO },
     uOuter: { value: disk.outerRadius },
@@ -62,8 +64,9 @@ export function createBlackHoleScene(canvas, config) {
     invalidate() {
       dirty = true;
     },
-    update({ elevationRad, azimuthRad, distance, lookYawRad, lookPitchRad, diskTime }) {
-      const key = `${elevationRad}|${azimuthRad}|${distance}|${lookYawRad}|${lookPitchRad}|${diskTime}`;
+    // distance: 계산할 카메라 거리(rs), zoom: 실제 카메라가 그보다 먼 정도(1이면 같음)
+    update({ elevationRad, azimuthRad, distance, zoom, lookYawRad, lookPitchRad, diskTime }) {
+      const key = `${elevationRad}|${azimuthRad}|${distance}|${zoom}|${lookYawRad}|${lookPitchRad}|${diskTime}`;
       if (!dirty && key === lastKey) return;
       lastKey = key;
       dirty = false;
@@ -73,6 +76,7 @@ export function createBlackHoleScene(canvas, config) {
       uniforms.uCamForward.value.set(...basis.forward);
       uniforms.uCamRight.value.set(...basis.right);
       uniforms.uCamUp.value.set(...basis.up);
+      uniforms.uTanHalfFov.value = trueTanHalf * zoom;
       uniforms.uEscape.value = distance * tracing.escapeMargin;
       uniforms.uTime.value = diskTime;
       renderer.render(scene, camera);

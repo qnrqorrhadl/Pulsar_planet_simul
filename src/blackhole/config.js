@@ -3,12 +3,20 @@ export const config = {
   defaults: {
     elevationDeg: 10,
     azimuthDeg: 0,
-    distance: 25,
+    massSolar: 10,
     diskSpeed: 1,
     lookYawDeg: 0,
     lookPitchDeg: 0,
   },
   view: {
+    // 처음과 "시점 초기화"의 카메라 거리(rs). 실제 거리는 질량을 곱해서 km로 바꾼다.
+    defaultDistanceRs: 25,
+    // 카메라 거리 제한(rs): 원반 바깥(10)보다 멀어야 하고, 계산은 maxRenderRs까지만 직접 하며
+    // 그보다 먼 것은 시야를 넓혀 작게 보이게 한다. maxTrueRs보다 멀면 거의 점이라 멈춘다.
+    minRs: 12,
+    maxRenderRs: 60,
+    maxTrueRs: 2000,
+    scaleBarTargetPx: 140,
     lookDegPerPixel: 0.1,
     lookPitchMaxDeg: 80,
     zoomPerWheelUnit: 0.0015,
@@ -16,7 +24,8 @@ export const config = {
   ranges: {
     elevationDeg: { min: 0, max: 89, log: false },
     azimuthDeg: { min: 0, max: 360, log: false },
-    distance: { min: 12, max: 60, log: false },
+    massSolar: { min: 3, max: 1e10, log: true },
+    distanceKm: { min: 30, max: 1e14, log: true },
     diskSpeed: { min: 0.1, max: 4, log: true },
   },
   disk: {
@@ -55,6 +64,12 @@ export const config = {
       warm: [1.0, 0.9, 0.75],
       cool: [0.55, 0.7, 1.0],
     },
+  },
+  // 눌러서 한 번에 바꾸는 예: 질량(태양 질량 단위)과 카메라 거리(rs)
+  presets: {
+    'bh-preset-stellar': { massSolar: 10, distanceRs: 25 },
+    'bh-preset-sgr': { massSolar: 4.3e6, distanceRs: 25 },
+    'bh-preset-m87': { massSolar: 6.5e9, distanceRs: 25 },
   },
   hints: {
     edgeOnMaxDeg: 5,

@@ -4,7 +4,7 @@ const HALF_TURN_DEG = 180;
 const FULL_TURN_DEG = 360;
 
 // 고개 돌리기: 드래그는 카메라 위치를 두고 시선만 돌린다(잡아끈 쪽으로 하늘이 딸려 온다).
-// 휠은 카메라 거리. 위치(관측 각도, 방위각)는 슬라이더가 맡는다.
+// 휠은 카메라 거리(실제 km). 위치(관측 각도, 방위각)는 슬라이더가 맡는다.
 // state를 직접 바꾸고, 바꾼 뒤 onChange()를 불러 화면 표시를 맞추게 한다.
 export function attachViewControls(canvas, state, config, onChange) {
   const { ranges, view } = config;
@@ -45,10 +45,10 @@ export function attachViewControls(canvas, state, config, onChange) {
     'wheel',
     (event) => {
       event.preventDefault();
-      state.distance = clamp(
-        state.distance * (1 + event.deltaY * view.zoomPerWheelUnit),
-        ranges.distance.min,
-        ranges.distance.max
+      state.distanceKm = clamp(
+        state.distanceKm * (1 + event.deltaY * view.zoomPerWheelUnit),
+        ranges.distanceKm.min,
+        ranges.distanceKm.max
       );
       onChange();
     },

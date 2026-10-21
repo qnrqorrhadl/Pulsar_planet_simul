@@ -146,6 +146,30 @@
   .mode-switch button + button { margin-left: -1px; }
   .mode-switch button[aria-pressed="true"] { position: relative; background: var(--surface); }
 
+  .scale-bar {
+    position: absolute;
+    left: 50%;
+    bottom: 64px;
+    transform: translateX(-50%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    pointer-events: none;
+    font-family: var(--font-data);
+    font-size: 12px;
+    color: var(--muted);
+  }
+  .scale-bar[hidden] { display: none; }
+  .scale-line {
+    display: block;
+    height: 7px;
+    border: 1px solid var(--axis);
+    border-top: none;
+  }
+  .preset-row { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+  .preset-row button { flex: 1 1 auto; min-height: 36px; padding: 6px 10px; font-size: 13px; }
+
   .mode-error {
     position: absolute;
     left: 50%;
@@ -279,6 +303,11 @@
       <li class="key observed">지구 방향</li>
     </ul>
 
+    <div class="scale-bar" data-mode="blackhole" hidden aria-hidden="true">
+      <span id="bh-scale-line" class="scale-line"></span>
+      <span id="bh-scale-label" class="scale-label"></span>
+    </div>
+
     <ul class="legend" data-mode="binary" hidden>
       <li class="key star-a">별 A (크고 차가움)</li>
       <li class="key star-b">별 B (작고 뜨거움)</li>
@@ -356,12 +385,14 @@
 
     <div class="mode-panel" data-mode="blackhole" hidden>
       <section class="block">
-        <h2>크기 기준 (1 rs = 사건의 지평선 반지름)</h2>
+        <h2>실제 크기 (반지름 기준, 1 rs = 사건의 지평선 반지름)</h2>
         <dl class="readouts">
-          <div><dt>사건의 지평선</dt><dd id="bh-read-horizon">-</dd></div>
-          <div><dt>광자 고리</dt><dd id="bh-read-ring">-</dd></div>
-          <div><dt>원반 안쪽 끝</dt><dd id="bh-read-isco">-</dd></div>
-          <div><dt>그림자 반지름</dt><dd id="bh-read-shadow">-</dd></div>
+          <div><dt>사건의 지평선 (1 rs)</dt><dd id="bh-read-horizon">-</dd></div>
+          <div><dt>광자 고리 (1.5 rs)</dt><dd id="bh-read-ring">-</dd></div>
+          <div><dt>원반 안쪽 끝 (3 rs)</dt><dd id="bh-read-isco">-</dd></div>
+          <div><dt>그림자 (2.6 rs)</dt><dd id="bh-read-shadow">-</dd></div>
+          <div><dt>원반 바깥 끝 (10 rs)</dt><dd id="bh-read-disk">-</dd></div>
+          <div><dt>카메라까지</dt><dd id="bh-read-camera">-</dd></div>
         </dl>
         <p id="bh-read-status" class="status" role="status"></p>
       </section>
@@ -378,8 +409,18 @@
           <output id="bh-ctl-azimuth-value" for="bh-ctl-azimuth"></output>
           <input id="bh-ctl-azimuth" type="range">
         </div>
+        <div class="preset-row" role="group" aria-label="예시 블랙홀">
+          <button id="bh-preset-stellar" type="button">별 블랙홀 (태양 10배)</button>
+          <button id="bh-preset-sgr" type="button">궁수자리 A*</button>
+          <button id="bh-preset-m87" type="button">M87*</button>
+        </div>
         <div class="control">
-          <label for="bh-ctl-distance">카메라 거리</label>
+          <label for="bh-ctl-mass">블랙홀 질량</label>
+          <output id="bh-ctl-mass-value" for="bh-ctl-mass"></output>
+          <input id="bh-ctl-mass" type="range">
+        </div>
+        <div class="control">
+          <label for="bh-ctl-distance">카메라까지 실제 거리</label>
           <output id="bh-ctl-distance-value" for="bh-ctl-distance"></output>
           <input id="bh-ctl-distance" type="range">
         </div>
