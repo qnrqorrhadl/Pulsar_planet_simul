@@ -1,3 +1,6 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>펄서 시뮬레이터</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+KR:wght@400;600&display=swap">
@@ -24,6 +27,8 @@
     --font-data: 'IBM Plex Mono', ui-monospace, Menlo, Consolas, monospace;
   }
 
+  /* 직접 열 때도 hidden이 먹도록 (게시 페이지의 기본 틀이 없을 때 모드 전환이 안 되는 문제 방지) */
+  [hidden] { display: none !important; }
   * { box-sizing: border-box; }
   html, body { height: 100%; }
   body {
