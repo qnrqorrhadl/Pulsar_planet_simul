@@ -222,7 +222,7 @@ export function buildBlackHoleFragment(tracing, disk, stars, jet, cloud, precess
             vec3 flow = vec3(0.0, position.y >= 0.0 ? 1.0 : -1.0, 0.0);
             float jetGamma = 1.0 / sqrt(1.0 - JET_SPEED * JET_SPEED);
             float jetShift = 1.0 / (jetGamma * (1.0 - JET_SPEED * dot(flow, -normalize(velocity))));
-            color += transmit * uJetColor * (exp(-across) * fade * pow(jetShift, JET_BEAMING) * JET_GAIN * dt);
+            color += transmit * uJetColor * (exp(-across * across) * fade * pow(jetShift, JET_BEAMING) * JET_GAIN * dt);
           }
         }
       }
@@ -246,7 +246,7 @@ export function buildBlackHoleFragment(tracing, disk, stars, jet, cloud, precess
             float flowGamma = 1.0 / sqrt(1.0 - PREC_SPEED * PREC_SPEED);
             float flowShift = 1.0 / (flowGamma * (1.0 - PREC_SPEED * dot(flow, -normalize(velocity))));
             vec3 tint = mix(uJetRed, uJetBlue, clamp(0.5 + 3.0 * (flowShift - 1.0), 0.0, 1.0));
-            color += transmit * tint * (exp(-across) * fade * pow(flowShift, PREC_BEAMING) * PREC_GAIN * dt);
+            color += transmit * tint * (exp(-across * across) * fade * pow(flowShift, PREC_BEAMING) * PREC_GAIN * dt);
           }
         }
       }
