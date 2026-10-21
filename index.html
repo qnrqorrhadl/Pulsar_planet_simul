@@ -23,6 +23,7 @@
     --hotspot: #ffffff;
     --disk-hot: #fff0d4;
     --disk-cool: #ff6b1a;
+    --jet: #8fb8ff;
     --binary-a-core: #ffe6c4;
     --binary-a-edge: #ff8a3d;
     --binary-b-core: #f2f8ff;
@@ -408,6 +409,11 @@
           <label for="bh-ctl-azimuth">방위각 (위치 돌기)</label>
           <output id="bh-ctl-azimuth-value" for="bh-ctl-azimuth"></output>
           <input id="bh-ctl-azimuth" type="range">
+        </div>
+        <div class="preset-row" role="group" aria-label="블랙홀 주변 모양">
+          <button id="bh-shape-disk" type="button" aria-pressed="true">강착원반</button>
+          <button id="bh-shape-bare" type="button" aria-pressed="false">원반 없음</button>
+          <button id="bh-shape-jet" type="button" aria-pressed="false">원반 + 제트</button>
         </div>
         <div class="preset-row" role="group" aria-label="예시 블랙홀">
           <button id="bh-preset-stellar" type="button">별 블랙홀 (태양 10배)</button>

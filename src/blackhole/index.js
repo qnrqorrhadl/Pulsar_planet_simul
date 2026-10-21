@@ -23,7 +23,15 @@ const SLIDERS = [
   { id: 'bh-ctl-speed', key: 'diskSpeed', format: formatSpeed },
 ];
 
-function describeView(elevationDeg) {
+function describeView(elevationDeg, shape) {
+  if (!shape.disk) {
+    return '원반이 없어서 블랙홀은 보이지 않아요. 뒤쪽 별빛이 휘어서 검은 그림자와 둥글게 감긴 별들이 보여요.';
+  }
+  const text = describeDisk(elevationDeg);
+  return shape.jet ? `${text} 위아래로 뿜는 제트는 다가오는 쪽이 더 밝아요.` : text;
+}
+
+function describeDisk(elevationDeg) {
   if (elevationDeg <= config.hints.edgeOnMaxDeg) {
     return '원반을 거의 옆에서 봐요. 블랙홀 뒤쪽 원반의 빛이 휘어서 위아래로 둥글게 솟아 보여요.';
   }
@@ -51,6 +59,21 @@ export function createBlackHoleMode(doc) {
   const canvas = doc.getElementById('bh-scene');
   const scene = createBlackHoleScene(canvas, config);
   const sliders = bindSliders(doc, SLIDERS, config.ranges, state);
+
+  // 블랙홀 주변 모양(원반, 제트)을 고르는 버튼
+  const shapeButtons = Object.keys(config.shapes).map((id) => doc.getElementById(id));
+  function selectShape(id) {
+    state.shape = config.shapes[id];
+    for (const button of shapeButtons) {
+      button.setAttribute('aria-pressed', String(button.id === id));
+    }
+  }
+  for (const button of shapeButtons) {
+    button.addEventListener('click', () => selectShape(button.id));
+  }
+  selectShape(
+    Object.keys(config.shapes).find((id) => config.shapes[id].id === config.defaultShape)
+  );
 
   // 질량을 키우면 같은 거리가 rs로는 가까워진다. 최소 거리보다 가까워지면 카메라를 뒤로 민다.
   function enforceLimits() {
@@ -132,17 +155,20 @@ export function createBlackHoleMode(doc) {
         lookYawRad: degToRad(state.lookYawDeg),
         lookPitchRad: degToRad(state.lookPitchDeg),
         diskTime: state.diskTime,
+        diskOn: state.shape.disk,
+        jetOn: state.shape.jet,
       });
       updateScaleBar(plan.trueRs, km);
 
       setText(readouts.horizon, formatLength(SCHWARZSCHILD_RADIUS * km));
       setText(readouts.ring, formatLength(PHOTON_SPHERE * km));
-      setText(readouts.isco, formatLength(ISCO * km));
+      const diskLength = (rs) => (state.shape.disk ? formatLength(rs * km) : '없음');
+      setText(readouts.isco, diskLength(ISCO));
       setText(readouts.shadow, formatLength(CRITICAL_IMPACT * km));
-      setText(readouts.disk, formatLength(config.disk.outerRadius * km));
+      setText(readouts.disk, diskLength(config.disk.outerRadius));
       setText(readouts.camera, `${Math.round(plan.trueRs)} rs`);
 
-      let status = describeView(state.elevationDeg);
+      let status = describeView(state.elevationDeg, state.shape);
       if (plan.tooFar) status += ' 너무 멀어서 점처럼 보여요.';
       setText(readStatus, status);
     },

@@ -28,13 +28,16 @@ export function createBlackHoleScene(canvas, config) {
     uHot: { value: new THREE.Color(cssVar('--disk-hot')) },
     uCool: { value: new THREE.Color(cssVar('--disk-cool')) },
     uBackground: { value: new THREE.Color(cssVar('--bg')) },
+    uDiskOn: { value: 1 },
+    uJetOn: { value: 0 },
+    uJetColor: { value: new THREE.Color(cssVar(config.jet.colorToken)) },
   };
 
   const quad = new THREE.Mesh(
     new THREE.PlaneGeometry(2, 2),
     new THREE.ShaderMaterial({
       vertexShader: BLACKHOLE_VERTEX,
-      fragmentShader: buildBlackHoleFragment(tracing, disk, config.stars),
+      fragmentShader: buildBlackHoleFragment(tracing, disk, config.stars, config.jet),
       uniforms,
       depthTest: false,
       depthWrite: false,
@@ -65,8 +68,8 @@ export function createBlackHoleScene(canvas, config) {
       dirty = true;
     },
     // distance: 계산할 카메라 거리(rs), zoom: 실제 카메라가 그보다 먼 정도(1이면 같음)
-    update({ elevationRad, azimuthRad, distance, zoom, lookYawRad, lookPitchRad, diskTime }) {
-      const key = `${elevationRad}|${azimuthRad}|${distance}|${zoom}|${lookYawRad}|${lookPitchRad}|${diskTime}`;
+    update({ elevationRad, azimuthRad, distance, zoom, lookYawRad, lookPitchRad, diskTime, diskOn, jetOn }) {
+      const key = `${elevationRad}|${azimuthRad}|${distance}|${zoom}|${lookYawRad}|${lookPitchRad}|${diskTime}|${diskOn}|${jetOn}`;
       if (!dirty && key === lastKey) return;
       lastKey = key;
       dirty = false;
@@ -79,6 +82,8 @@ export function createBlackHoleScene(canvas, config) {
       uniforms.uTanHalfFov.value = trueTanHalf * zoom;
       uniforms.uEscape.value = distance * tracing.escapeMargin;
       uniforms.uTime.value = diskTime;
+      uniforms.uDiskOn.value = diskOn ? 1 : 0;
+      uniforms.uJetOn.value = jetOn ? 1 : 0;
       renderer.render(scene, camera);
     },
   };

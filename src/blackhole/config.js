@@ -65,6 +65,24 @@ export const config = {
       cool: [0.55, 0.7, 1.0],
     },
   },
+  // 블랙홀 주변 모양. 버튼 id → 원반과 제트를 켤지
+  shapes: {
+    'bh-shape-disk': { id: 'disk', disk: true, jet: false },
+    'bh-shape-bare': { id: 'bare', disk: false, jet: false },
+    'bh-shape-jet': { id: 'jet', disk: true, jet: true },
+  },
+  defaultShape: 'disk',
+  // 제트(연출용 모양): 원반과 수직인 축을 따라 가늘게 퍼지는 빛줄기. 정해진 공식이 없어 모양과 밝기는 보기 좋게 정한 값이다.
+  jet: {
+    startHeight: 1.5,
+    baseWidth: 0.35,
+    spread: 0.1,
+    length: 22,
+    gain: 1.8,
+    speed: 0.7,
+    beamingPower: 2.5,
+    colorToken: '--jet',
+  },
   // 눌러서 한 번에 바꾸는 예: 질량(태양 질량 단위)과 카메라 거리(rs)
   presets: {
     'bh-preset-stellar': { massSolar: 10, distanceRs: 25 },

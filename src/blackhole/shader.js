@@ -12,7 +12,7 @@ export const BLACKHOLE_VERTEX = `
 
 // 화면의 모든 점에서 빛을 거꾸로 추적한다. 걸음 규칙은 physics.js의 traceRay와 같고,
 // 도플러와 중력 적색편이는 physics.js의 observedShift와 같은 식이다.
-export function buildBlackHoleFragment(tracing, disk, stars) {
+export function buildBlackHoleFragment(tracing, disk, stars, jet) {
   return `
   uniform vec2 uResolution;
   uniform vec3 uCamPos;
@@ -28,6 +28,9 @@ export function buildBlackHoleFragment(tracing, disk, stars) {
   uniform vec3 uHot;
   uniform vec3 uCool;
   uniform vec3 uBackground;
+  uniform float uDiskOn;
+  uniform float uJetOn;
+  uniform vec3 uJetColor;
 
   const int MAX_STEPS = ${tracing.maxSteps};
   const float STEP_SCALE = ${glFloat(tracing.stepScale)};
@@ -43,6 +46,13 @@ export function buildBlackHoleFragment(tracing, disk, stars) {
   const float BRIGHT_HEAT = ${glFloat(disk.brightnessHeat)};
   const float HEAT_FALLOFF = ${glFloat(disk.heatFalloff)};
   const float BEAMING_POWER = ${glFloat(disk.beamingPower)};
+  const float JET_START = ${glFloat(jet.startHeight)};
+  const float JET_BASE_WIDTH = ${glFloat(jet.baseWidth)};
+  const float JET_SPREAD = ${glFloat(jet.spread)};
+  const float JET_LENGTH = ${glFloat(jet.length)};
+  const float JET_GAIN = ${glFloat(jet.gain)};
+  const float JET_SPEED = ${glFloat(jet.speed)};
+  const float JET_BEAMING = ${glFloat(jet.beamingPower)};
   const vec3 BLUE_TINT = ${glVec3(disk.blueTint)};
   const vec3 RED_TINT = ${glVec3(disk.redTint)};
 
@@ -166,8 +176,25 @@ export function buildBlackHoleFragment(tracing, disk, stars) {
       float rNow = length(position);
       if (rNow < HORIZON) break;
 
+      // 제트: 블랙홀 위아래 축을 따라 뿜는 가는 빛줄기. 빛이 지나는 길을 따라 조금씩 더한다(옅은 기체라 가리지 않는다).
+      // 폭은 높이에 따라 퍼지고, 세기는 멀수록 약해진다. 관측자 쪽으로 오는 줄기가 더 밝다(도플러).
+      if (uJetOn > 0.5) {
+        float height = abs(position.y);
+        if (height > JET_START) {
+          float width = JET_BASE_WIDTH + JET_SPREAD * (height - JET_START);
+          float across = dot(position.xz, position.xz) / (width * width);
+          if (across < 9.0) {
+            float fade = exp(-(height - JET_START) / JET_LENGTH) * (JET_BASE_WIDTH * JET_BASE_WIDTH) / (width * width);
+            vec3 flow = vec3(0.0, position.y >= 0.0 ? 1.0 : -1.0, 0.0);
+            float jetGamma = 1.0 / sqrt(1.0 - JET_SPEED * JET_SPEED);
+            float jetShift = 1.0 / (jetGamma * (1.0 - JET_SPEED * dot(flow, -normalize(velocity))));
+            color += transmit * uJetColor * (exp(-across) * fade * pow(jetShift, JET_BEAMING) * JET_GAIN * dt);
+          }
+        }
+      }
+
       // 원반 면(y = 0)을 지나는 순간
-      if (previous.y * position.y < 0.0) {
+      if (uDiskOn > 0.5 && previous.y * position.y < 0.0) {
         float along = previous.y / (previous.y - position.y);
         vec3 hit = mix(previous, position, along);
         float radius = length(hit.xz);

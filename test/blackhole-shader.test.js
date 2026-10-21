@@ -4,7 +4,7 @@ import { parse } from '@shaderfrog/glsl-parser';
 import { config } from '../src/blackhole/config.js';
 import { BLACKHOLE_VERTEX, buildBlackHoleFragment } from '../src/blackhole/shader.js';
 
-const fragment = buildBlackHoleFragment(config.tracing, config.disk, config.stars);
+const fragment = buildBlackHoleFragment(config.tracing, config.disk, config.stars, config.jet);
 
 test('블랙홀 정점 셰이더는 문법 오류가 없다', () => {
   assert.doesNotThrow(() => parse(BLACKHOLE_VERTEX, { quiet: true }));
@@ -29,6 +29,21 @@ test('먼 카메라의 시선 보정이 셰이더에 들어간다', () => {
   assert.match(fragment, /uniform float uTanHalfTrue;/);
   assert.match(fragment, /vec3 initialTrue/);
   assert.match(fragment, /backdrop = transmit \* \(uBackground \+ milkyWay\(sky\) \+ starfield\(sky\)\)/);
+});
+
+test('제트와 원반 켜기·끄기 스위치가 셰이더에 있다', () => {
+  assert.match(fragment, /uniform float uJetOn;/);
+  assert.match(fragment, /uniform float uDiskOn;/);
+  assert.match(fragment, /if \(uDiskOn > 0\.5 && previous\.y \* position\.y < 0\.0\)/);
+  assert.match(fragment, new RegExp(`JET_SPEED = ${config.jet.speed.toFixed(4)};`));
+});
+
+test('설정한 모양이 모두 원반·제트 켜기 값을 가진다', () => {
+  for (const shape of Object.values(config.shapes)) {
+    assert.strictEqual(typeof shape.disk, 'boolean');
+    assert.strictEqual(typeof shape.jet, 'boolean');
+  }
+  assert.ok(Object.values(config.shapes).some((s) => s.id === config.defaultShape));
 });
 
 test('은하수 띠가 배경에 더해진다', () => {
