@@ -9,7 +9,7 @@ import {
   rsKm,
   viewPlan,
 } from './physics.js';
-import { formatLength, formatSolarMass, niceScaleBar } from './units.js';
+import { formatLength, formatSolarMass, niceScaleBar } from '../shared/units.js';
 import { createBlackHoleScene } from './scene.js';
 import { attachViewControls } from './view.js';
 

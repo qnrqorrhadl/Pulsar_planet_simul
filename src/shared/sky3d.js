@@ -12,7 +12,7 @@ function seededRandom(seed) {
   };
 }
 
-function makeGlowTexture(colorCss) {
+export function makeGlowTexture(colorCss) {
   const size = 128;
   const canvas = document.createElement('canvas');
   canvas.width = size;

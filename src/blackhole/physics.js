@@ -3,6 +3,7 @@
 // 이 식은 슈바르츠실트 빛 궤적(u'' + u = 1.5 u²)과 같은 모양을 준다. 셰이더도 같은 걸음 규칙을 쓴다.
 
 import { clamp } from '../shared/math.js';
+import { SCHWARZSCHILD_KM_PER_SOLAR_MASS } from '../shared/units.js';
 
 export const SCHWARZSCHILD_RADIUS = 1;
 export const PHOTON_SPHERE = 1.5;
@@ -10,7 +11,7 @@ export const ISCO = 3;
 export const CRITICAL_IMPACT = (3 * Math.sqrt(3)) / 2;
 
 // 슈바르츠실트 반지름 rs = 2GM/c². 태양 질량 1개일 때 약 2.953 km, 질량에 비례한다.
-export const SCHWARZSCHILD_KM_PER_SOLAR_MASS = 2.95325;
+export { SCHWARZSCHILD_KM_PER_SOLAR_MASS };
 export const rsKm = (solarMasses) => solarMasses * SCHWARZSCHILD_KM_PER_SOLAR_MASS;
 
 // 실제 카메라 거리(km)를 계산용 거리로 바꾼다. 길이 단위는 rs.

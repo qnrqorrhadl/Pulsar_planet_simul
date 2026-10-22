@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert';
-import { formatLength, formatSolarMass, niceNumber, niceScaleBar } from '../src/blackhole/units.js';
+import { formatLength, formatSolarMass, niceNumber, niceScaleBar } from '../src/shared/units.js';
 import { rsKm, viewPlan, SCHWARZSCHILD_KM_PER_SOLAR_MASS } from '../src/blackhole/physics.js';
 import { config } from '../src/blackhole/config.js';
 

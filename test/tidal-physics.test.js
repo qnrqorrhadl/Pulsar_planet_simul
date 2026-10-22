@@ -1,0 +1,167 @@
+import test from 'node:test';
+import assert from 'node:assert';
+import { config } from '../src/tidal/config.js';
+import {
+  parabolicPosition,
+  parabolicTimeAtRadius,
+  orbitElements,
+  orbitPosition,
+  timeAtRadius,
+  buildDebris,
+  debrisPosition,
+  tidalRadiusKm,
+  horizonInTidal,
+  realFirstReturnSeconds,
+  energySpread,
+  firstReturnTime,
+  fallbackRate,
+  solveEllipticAnomaly,
+  solveHyperbolicAnomaly,
+} from '../src/tidal/physics.js';
+
+const near = (a, b, tol = 1e-6) => assert.ok(Math.abs(a - b) <= tol * Math.max(1, Math.abs(b)), `${a} vs ${b}`);
+const radius = ([x, y]) => Math.hypot(x, y);
+const P = config.physics;
+
+test('조석 반지름: 태양 1개와 백만 태양 블랙홀이면 태양 반지름의 약 100배', () => {
+  near(tidalRadiusKm(1e6, 1, P), 695700 * 100, 1e-6);
+});
+
+test('조석 반지름은 별 반지름 × (M_bh/M★)^(1/3)이고 더 무거운 블랙홀일수록 커진다', () => {
+  assert.ok(tidalRadiusKm(1e8, 1, P) > tidalRadiusKm(1e6, 1, P));
+});
+
+test('블랙홀이 충분히 크면 지평선이 조석 반지름보다 커진다(통째로 삼킴)', () => {
+  assert.ok(horizonInTidal(1e6, 1, P) < 1);
+  assert.ok(horizonInTidal(1e9, 1, P) > 1);
+});
+
+test('실제 첫 귀환 시간: 태양 + 백만 태양 블랙홀이면 약 한 달 반(30~60일)', () => {
+  const days = realFirstReturnSeconds(1e6, 1, P) / 86400;
+  assert.ok(days > 30 && days < 60, days);
+});
+
+test('포물선 궤도: 가장 가까운 순간 거리가 rp이고, 지나기 전후가 y 반대, x 같음', () => {
+  const rp = 0.5;
+  near(radius(parabolicPosition(0, rp)), rp);
+  const before = parabolicPosition(-3, rp);
+  const after = parabolicPosition(3, rp);
+  near(before[0], after[0]);
+  near(before[1], -after[1]);
+});
+
+test('포물선 궤도: 에너지 0 (속력² = 2/r)', () => {
+  const rp = 0.4;
+  const dt = 1e-5;
+  const t = -2;
+  const a = parabolicPosition(t - dt, rp);
+  const b = parabolicPosition(t + dt, rp);
+  const v = Math.hypot(b[0] - a[0], b[1] - a[1]) / (2 * dt);
+  const r = radius(parabolicPosition(t, rp));
+  near(v * v, 2 / r, 1e-4);
+});
+
+test('r = 1에 닿는 시간을 거꾸로 넣으면 거리가 1이다', () => {
+  const rp = 0.5;
+  near(radius(parabolicPosition(parabolicTimeAtRadius(1, rp), rp)), 1, 1e-9);
+});
+
+test('케플러 방정식 풀이가 방정식을 만족한다', () => {
+  for (const e of [0.1, 0.9, 0.999]) {
+    for (const m of [-3, -0.5, 0.01, 2, 3.1]) {
+      const anomaly = solveEllipticAnomaly(m, e);
+      near(anomaly - e * Math.sin(anomaly), m, 1e-8);
+    }
+  }
+  for (const e of [1.0005, 1.5, 3]) {
+    for (const m of [-6, -0.5, 0.01, 4]) {
+      const anomaly = solveHyperbolicAnomaly(m, e);
+      near(e * Math.sinh(anomaly) - anomaly, m, 1e-8);
+    }
+  }
+});
+
+test('에너지가 다른 모든 궤도가 가장 가까운 점에서 같은 거리 rp를 지난다', () => {
+  const rp = 0.45;
+  for (const epsilon of [-0.2, -0.01, 0.01, 0.2]) {
+    const el = orbitElements(epsilon, rp);
+    near(radius(orbitPosition(el, 0)), rp, 1e-8);
+  }
+});
+
+test('에너지 보존: 속력²/2 - 1/r = ε (묶인 궤도와 날아가는 궤도)', () => {
+  const rp = 0.5;
+  for (const epsilon of [-0.08, 0.08]) {
+    const el = orbitElements(epsilon, rp);
+    const t = 3;
+    const dt = 1e-5;
+    const a = orbitPosition(el, t - dt);
+    const b = orbitPosition(el, t + dt);
+    const v = Math.hypot(b[0] - a[0], b[1] - a[1]) / (2 * dt);
+    near(0.5 * v * v - 1 / radius(orbitPosition(el, t)), epsilon, 1e-4);
+  }
+});
+
+test('묶인 궤도는 한 바퀴(2π a^1.5) 뒤에 같은 자리로 돌아온다', () => {
+  const el = orbitElements(-0.08, 0.5);
+  const period = 2 * Math.PI * el.a ** 1.5;
+  const first = orbitPosition(el, 1.3);
+  const later = orbitPosition(el, 1.3 + period);
+  near(first[0], later[0], 1e-6);
+  near(first[1], later[1], 1e-6);
+});
+
+test('알갱이는 모두 별이 r = 1에 닿는 순간 거의 같은 자리(r = 1)에서 출발한다', () => {
+  const rp = 0.5;
+  const debris = buildDebris({ count: 50, periapsis: rp, spread: 0.08, cloudRadius: 0, seed: 1 });
+  const out = [0, 0, 0];
+  for (let i = 0; i < debris.count; i += 7) {
+    debrisPosition(debris, i, debris.disruptionTime, 0, out);
+    near(Math.hypot(out[0], out[1]), 1, 1e-6);
+  }
+});
+
+test('시간이 지나면 묶인 알갱이는 가까이 남고 날아가는 알갱이는 멀어진다', () => {
+  const debris = buildDebris({ count: 40, periapsis: 0.5, spread: 0.08, cloudRadius: 0, seed: 1 });
+  const out = [0, 0, 0];
+  const t = 80;
+  debrisPosition(debris, 0, t, 0, out);
+  const boundDistance = Math.hypot(out[0], out[1]);
+  debrisPosition(debris, 39, t, 0, out);
+  const unboundDistance = Math.hypot(out[0], out[1]);
+  assert.ok(boundDistance < 2 * (1 / (2 * 0.08)) * 1.01);
+  assert.ok(unboundDistance > 10);
+});
+
+test('첫 귀환 시간: 에너지 퍼짐이 클수록 짧고 묶인 가장 안쪽 궤도의 주기와 같다', () => {
+  const s = energySpread(1e6, 1, P);
+  const el = orbitElements(-s, 0.5);
+  near(firstReturnTime(s), 2 * Math.PI * el.a ** 1.5, 1e-9);
+  assert.ok(firstReturnTime(0.2) < firstReturnTime(0.1));
+});
+
+test('귀환량: 첫 귀환 전에는 0, 이후 t^(-5/3)로 줄어든다', () => {
+  assert.strictEqual(fallbackRate(0.3, 0.7), 0);
+  near(fallbackRate(1, 0.7), 1);
+  near(fallbackRate(2, 0.7) / fallbackRate(1, 0.7), 2 ** (-5 / 3), 1e-9);
+});
+
+test('설정이 올바르다', () => {
+  assert.ok(config.particles.count > 0);
+  assert.ok(config.physics.disruptBeta > 0);
+  for (const key of Object.keys(config.ranges)) {
+    assert.ok(config.ranges[key].min < config.ranges[key].max);
+  }
+  assert.ok(config.defaults.beta >= config.physics.disruptBeta);
+});
+
+test('화면 코드가 찾는 id가 index.html에 모두 있다', async () => {
+  const { readFileSync } = await import('node:fs');
+  const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  const code = readFileSync(new URL('../src/tidal/index.js', import.meta.url), 'utf8');
+  const ids = [...code.matchAll(/'(td-[a-z-]+)'/g)].map((m) => m[1]);
+  assert.ok(ids.length >= 8);
+  for (const id of ids) assert.ok(html.includes(`id="${id}"`), id);
+  assert.ok(html.includes('data-target="tidal"'));
+  assert.ok(html.includes('id="td-scene"') && html.includes('id="td-graph"'));
+});
