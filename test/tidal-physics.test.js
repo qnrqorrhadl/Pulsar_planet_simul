@@ -17,6 +17,10 @@ import {
   fallbackRate,
   solveEllipticAnomaly,
   solveHyperbolicAnomaly,
+  starStretch,
+  periapsisShiftPerOrbit,
+  collisionPoint,
+  collisionFlash,
 } from '../src/tidal/physics.js';
 
 const near = (a, b, tol = 1e-6) => assert.ok(Math.abs(a - b) <= tol * Math.max(1, Math.abs(b)), `${a} vs ${b}`);
@@ -164,4 +168,53 @@ test('화면 코드가 찾는 id가 index.html에 모두 있다', async () => {
   for (const id of ids) assert.ok(html.includes(`id="${id}"`), id);
   assert.ok(html.includes('data-target="tidal"'));
   assert.ok(html.includes('id="td-scene"') && html.includes('id="td-graph"'));
+});
+
+test('별 늘어남: 멀리서는 1배, 조석 반지름에서 최대, 부피는 보존', () => {
+  const s = { startRadius: 3.2, maxStretch: 4 };
+  const far = starStretch(10, s);
+  assert.equal(far.along, 1);
+  const near = starStretch(1, s);
+  assert.ok(Math.abs(near.along - 4) < 1e-9);
+  assert.ok(Math.abs(near.along * near.across * near.across - 1) < 1e-9);
+});
+
+test('근점 이동은 가까울수록 크고 한계를 넘지 않는다', () => {
+  assert.ok(periapsisShiftPerOrbit(0.1, 2, 5) > periapsisShiftPerOrbit(0.05, 2, 5));
+  assert.equal(periapsisShiftPerOrbit(10, 2, 1.2), 1.2);
+});
+
+test('충돌 지점은 타원 위에 있고 이동이 0이면 근점', () => {
+  const el = orbitElements(-0.05, 1);
+  const p = 2 * 1 - 2 * 0.05;
+  const [x0, y0] = collisionPoint(el, p, 0);
+  assert.ok(Math.abs(x0 - p / (1 + el.e)) < 1e-9 && Math.abs(y0) < 1e-12);
+  const [x, y] = collisionPoint(el, p, 0.8);
+  assert.ok(y > 0 && Math.hypot(x, y) > Math.hypot(x0, y0) - 1e-9);
+});
+
+test('충돌 섬광은 첫 귀환 직후 가장 세고 0~1 범위', () => {
+  const peak = collisionFlash(1.05, 0.7);
+  assert.ok(peak > collisionFlash(0.3, 0.7));
+  assert.ok(peak > collisionFlash(2.5, 0.7));
+  for (const t of [0, 0.5, 1, 1.05, 2, 3.5]) {
+    const f = collisionFlash(t, 0.7);
+    assert.ok(f >= 0 && f <= 1);
+  }
+});
+
+test('늘어난 구름: 반지름 방향이 옆 방향보다 길다', () => {
+  const periapsis = 1;
+  const d = buildDebris({ count: 2000, periapsis, spread: 0.05, cloudRadius: 0.2, seed: 3, stretch: { along: 4, across: 0.5 } });
+  const [rx, ry] = parabolicPosition(d.disruptionTime, periapsis);
+  const len = Math.hypot(rx, ry);
+  let a = 0;
+  let b = 0;
+  for (let i = 0; i < d.count; i++) {
+    const ox = d.offset[i * 3];
+    const oy = d.offset[i * 3 + 1];
+    a += (ox * rx + oy * ry) ** 2 / (len * len);
+    b += (-ox * ry + oy * rx) ** 2 / (len * len);
+  }
+  assert.ok(a > 4 * b);
 });

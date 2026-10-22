@@ -3,6 +3,11 @@ import { bindSliders, bindPauseButton } from '../shared/ui.js';
 import { formatLength, formatSolarMass } from '../shared/units.js';
 import {
   buildDebris,
+  collisionFlash,
+  collisionPoint,
+  orbitElements,
+  periapsisShiftPerOrbit,
+  starStretch,
   disrupts as disruptsAt,
   energySpread,
   fallbackRate,
@@ -60,7 +65,11 @@ function analyze(state) {
   if (disrupts) end = firstReturn * physics.loopFirstReturns;
   else if (swallowedWhole) end = parabolicTimeAtRadius(Math.max(horizonRatio, periapsis), periapsis) + SWALLOW_LINGER;
   else end = -start;
+  const semiLatus = 2 * periapsis - 2 * spread * periapsis * periapsis; // 가장 단단히 묶인 부스러기(ε = -spread)
+  const shift = periapsisShiftPerOrbit(horizonRatio, semiLatus, config.collision.maxShiftPerOrbit);
+  const fullStretch = starStretch(1, config.stretch);
   return {
+    collisionAt: disrupts ? collisionPoint(orbitElements(-spread, periapsis), semiLatus, shift) : null,
     periapsis,
     horizonRatio,
     horizonVisual: Math.min(Math.max(horizonRatio, visual.minHorizonVisual), MAX_HORIZON_VISUAL),
@@ -77,6 +86,9 @@ function analyze(state) {
           spread,
           cloudRadius: particles.cloudRadius,
           seed: particles.seed,
+          horizonRatio,
+          maxShift: config.collision.maxShiftPerOrbit,
+          stretch: fullStretch,
         })
       : null,
     tidalKm: tidalRadiusKm(state.bhMassSolar, state.starMassSolar, physics),
@@ -154,6 +166,14 @@ export function createTidalMode(doc) {
         starHidden = Math.hypot(x, y) < a.horizonVisual;
       }
 
+      let stretch = { along: 1, across: 1 };
+      if (a.disrupts && !disrupted) {
+        const [sx, sy] = parabolicPosition(state.time, a.periapsis);
+        stretch = starStretch(Math.hypot(sx, sy), config.stretch);
+      } else if (a.disrupts) {
+        stretch = starStretch(1, config.stretch);
+      }
+
       const inFirstReturns = state.time / a.firstReturn;
       const rate = a.disrupts ? fallbackRate(inFirstReturns, config.graph.riseStart) : 0;
 
@@ -166,6 +186,9 @@ export function createTidalMode(doc) {
         horizonVisual: a.horizonVisual,
         starHidden,
         starScale,
+        starStretch: stretch,
+        flash: a.disrupts ? collisionFlash(inFirstReturns, config.graph.riseStart, config.collision.burstCenter, config.collision.burstWidth) : 0,
+        collisionAt: a.collisionAt,
         rate,
       });
       graph.draw({ inFirstReturns: a.disrupts ? inFirstReturns : null });

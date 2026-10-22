@@ -48,6 +48,12 @@ export function createTidalScene(canvas, config) {
     corona: v.corona,
   });
   scene.add(star);
+  const starBody = star.children[0]; // 공 모양 몸통만 늘어난다(둘레 빛은 둥글게 둔다)
+
+  // 되돌아온 띠가 자기 길과 부딪히는 자리의 섬광
+  const flash = makeGlowSprite(cssVar(config.collision.flashColorToken), 0);
+  flash.visible = false;
+  scene.add(flash);
 
   // 별이 오는 포물선 길(참고선)
   const orbitLine = new THREE.Line(
@@ -116,7 +122,7 @@ export function createTidalScene(canvas, config) {
   const mixed = new THREE.Color();
 
   return {
-    // state: { time, periapsis, reach, debris, disrupted, horizonVisual, starHidden, starScale, rate }
+    // state: { time, periapsis, reach, debris, disrupted, horizonVisual, starHidden, starScale, starStretch, flash, collisionAt, rate }
     update(state) {
       const { time, periapsis, debris, horizonVisual } = state;
       rebuildOrbit(periapsis, state.reach);
@@ -130,6 +136,16 @@ export function createTidalScene(canvas, config) {
         const [x, y] = parabolicPosition(time, periapsis);
         star.position.set(...toWorld(x, y, 0));
         star.scale.setScalar(state.starScale);
+        star.rotation.y = Math.atan2(y, x);
+        starBody.scale.set(state.starStretch.along, state.starStretch.across, state.starStretch.across);
+      }
+
+      const showFlash = state.disrupted && state.flash > 0.01 && state.collisionAt;
+      flash.visible = Boolean(showFlash);
+      if (showFlash) {
+        flash.position.set(...toWorld(state.collisionAt[0], state.collisionAt[1], 0));
+        flash.scale.setScalar(config.collision.flashScale * (0.5 + 0.5 * state.flash));
+        flash.material.opacity = config.collision.flashOpacity * state.flash;
       }
 
       if (state.disrupted) {

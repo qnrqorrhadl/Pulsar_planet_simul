@@ -164,3 +164,10 @@ pulsar-sim/
 - 블랙홀은 매 프레임 픽셀마다 계산해서 무겁다. 화질은 `blackhole/config.js`의 `renderScale`, 걸음 수는 `maxSteps`로 조절한다. 멈춤 상태에서 값이 그대로면 다시 그리지 않는다
 - 블랙홀 카메라 거리의 최소값(`view.minRs` 12)은 원반 바깥 반지름(10)보다 커야 한다(테스트로 확인, 원반 옷의 바깥 반지름도 마찬가지). 지금 `view.minRs`는 16, 가장 큰 원반(SS 433)은 14
 - 관측자 시점에서 관측 각도가 0°나 180°면 카메라 각도를 88°로 제한해 화면이 뒤집히지 않게 한다
+
+
+## 조석 파괴: 별 늘어남과 충돌 섬광 (추가)
+- 별 늘어남: `starStretch(r)` (config.stretch: startRadius, maxStretch). 부피 보존, 반지름 방향으로 늘어남. 찢긴 알갱이 구름도 같은 모양으로 시작.
+- 충돌 섬광: 가장 묶인 부스러기의 근점 이동(`periapsisShiftPerOrbit`, 일반상대론 식, 한계 config.collision.maxShiftPerOrbit)으로 `collisionPoint` 계산, 세기는 `collisionFlash`(첫 귀환 직후 최대). 모양은 연출용 근사.
+- 알갱이 타원도 근점 이동으로 천천히 돌아감(`turnRate`).
+- 원반 형성(3번)·제트(4번)·번짐은 나중.

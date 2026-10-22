@@ -33,11 +33,15 @@ export const config = {
   particles: {
     count: 10000,
     // 처음 별 덩어리의 크기(r_t 단위, 보이는 크기)
-    cloudRadius: 0.16,
+    cloudRadius: 0.2,
     // 부스러기가 퍼지면서 두꺼워지는 정도(1 + 이 값 × 지나온 비율)
     thickening: 2.5,
     seed: 7,
   },
+  // 별이 찢기기 직전의 늘어남(스파게티화)
+  stretch: { startRadius: 3.2, maxStretch: 5 },
+  // 근점 이동(한 바퀴마다 타원이 돌아가는 각도)의 한계(rad). 일반상대론 식이 지평선 가까이에서는 맞지 않아서 제한한다.
+  collision: { maxShiftPerOrbit: 1.2, burstCenter: 1.1, burstWidth: 0.25, flashScale: 5, flashOpacity: 0.9, flashColorToken: '--tde-flash' },
   graph: { maxFirstReturns: 3.5, riseStart: 0.7 },
   visual: {
     cameraDistance: 40,
@@ -48,7 +52,7 @@ export const config = {
     maxPitchDeg: 88,
     dragSensitivity: 0.006,
     zoomSensitivity: 0.0015,
-    starVisualRadius: 0.22,
+    starVisualRadius: 0.3,
     // 블랙홀이 너무 작으면 보이도록 하는 최소 반지름(r_t 단위)
     minHorizonVisual: 0.07,
     glowScale: 1.6,
