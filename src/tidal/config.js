@@ -33,7 +33,7 @@ export const config = {
   particles: {
     count: 10000,
     // 처음 별 덩어리의 크기(r_t 단위, 보이는 크기)
-    cloudRadius: 0.2,
+    cloudRadius: 0.16,
     // 부스러기가 퍼지면서 두꺼워지는 정도(1 + 이 값 × 지나온 비율)
     thickening: 2.5,
     seed: 7,

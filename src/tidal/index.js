@@ -67,7 +67,6 @@ function analyze(state) {
   else end = -start;
   const semiLatus = 2 * periapsis - 2 * spread * periapsis * periapsis; // 가장 단단히 묶인 부스러기(ε = -spread)
   const shift = periapsisShiftPerOrbit(horizonRatio, semiLatus, config.collision.maxShiftPerOrbit);
-  const fullStretch = starStretch(1, config.stretch);
   return {
     collisionAt: disrupts ? collisionPoint(orbitElements(-spread, periapsis), semiLatus, shift) : null,
     periapsis,
@@ -88,7 +87,6 @@ function analyze(state) {
           seed: particles.seed,
           horizonRatio,
           maxShift: config.collision.maxShiftPerOrbit,
-          stretch: fullStretch,
         })
       : null,
     tidalKm: tidalRadiusKm(state.bhMassSolar, state.starMassSolar, physics),

@@ -167,7 +167,7 @@ pulsar-sim/
 
 
 ## 조석 파괴: 별 늘어남과 충돌 섬광 (추가)
-- 별 늘어남: `starStretch(r)` (config.stretch: startRadius, maxStretch). 부피 보존, 반지름 방향으로 늘어남. 찢긴 알갱이 구름도 같은 모양으로 시작.
+- 별 늘어남: `starStretch(r)` (config.stretch: startRadius, maxStretch). 부피 보존, 반지름 방향으로 늘어남. 알갱이 구름은 늘리지 않음(마름모처럼 보여서 뺌).
 - 충돌 섬광: 가장 묶인 부스러기의 근점 이동(`periapsisShiftPerOrbit`, 일반상대론 식, 한계 config.collision.maxShiftPerOrbit)으로 `collisionPoint` 계산, 세기는 `collisionFlash`(첫 귀환 직후 최대). 모양은 연출용 근사.
 - 알갱이 타원도 근점 이동으로 천천히 돌아감(`turnRate`).
 - 원반 형성(3번)·제트(4번)·번짐은 나중.
