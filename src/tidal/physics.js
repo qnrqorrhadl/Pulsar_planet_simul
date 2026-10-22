@@ -161,7 +161,7 @@ export function collisionFlash(timeInFirstReturns, riseStart, burstCenter = 1.1,
 
 // 연출 방식: 별이 지나가며 꼬리처럼 물질을 흘린다. 알갱이는 흘려진 순간 별 위치에서 출발하고(별과 같은 곳, 같은 반지름),
 // 일찍 흘린 것일수록 더 단단히 묶여서(ε < 0) 뒤로 처지며 블랙홀 쪽으로 휘어 감긴다.
-export function buildStream({ count, periapsis, spread, cloudRadius, seed, startRadius, endFactor, horizonRatio = 0, maxShift = 0 }) {
+export function buildStream({ count, periapsis, spread, cloudRadius, seed, startRadius, endFactor, tailBind = 1, bindLimit = 0.8, tipWidth = 1, discSpread = 0, horizonRatio = 0, maxShift = 0 }) {
   const random = seededRandom(seed);
   const startTime = parabolicTimeAtRadius(startRadius, periapsis);
   const endTime = -startTime * endFactor;
@@ -175,14 +175,18 @@ export function buildStream({ count, periapsis, spread, cloudRadius, seed, start
     turnRate: new Float64Array(count),
     releaseTime: new Float64Array(count),
     rotation: new Float64Array(count),
+    circular: newCircularArrays(count),
+    clump: new Float32Array(count * 3),
   };
   for (let i = 0; i < count; i++) {
     const u = (i + 0.5) / count;
     const release = startTime + (endTime - startTime) * u;
-    const epsilon = -spread * (1 - 2 * u);
-    const el = orbitElements(epsilon, periapsis);
+    // 묶인 쪽(먼저 흘린 꼬리)은 tailBind배 더 단단히 묶여서 훨씬 빨리 블랙홀로 떨어진다
     const [sx, sy] = parabolicPosition(release, periapsis);
     const r = Math.hypot(sx, sy);
+    // 별 위치(r)에서 속도가 0보다 크려면 ε > -1/r 이어야 한다. 그보다 단단히 묶이면 그 자리에 있을 수 없어서(꼬리가 별보다 앞서 버림) 제한한다.
+    const epsilon = Math.max(-spread * (1 - 2 * u) * (u < 0.5 ? tailBind : 1), -bindLimit / r);
+    const el = orbitElements(epsilon, periapsis);
     const toRadius = timeAtRadius(el, r); // 근점 전(들어오는 중) 시간, 음수
     const tau = release <= 0 ? toRadius : -toRadius;
     debris.el[i] = el;
@@ -198,13 +202,29 @@ export function buildStream({ count, periapsis, spread, cloudRadius, seed, start
       y = random() * 2 - 1;
       z = random() * 2 - 1;
     } while (x * x + y * y + z * z > 1);
-    debris.offset[i * 3] = x * cloudRadius;
-    debris.offset[i * 3 + 1] = y * cloudRadius;
-    debris.offset[i * 3 + 2] = z * cloudRadius;
+    // 별 덩어리 안에서 놓인 자리(중심에 몰린 둥근 분포): 아직 흘려지기 전에는 별 자리에 이 모양으로 모여 있다
+    let cx;
+    let cy;
+    let cz;
+    do {
+      cx = random() * 2 - 1;
+      cy = random() * 2 - 1;
+      cz = random() * 2 - 1;
+    } while (cx * cx + cy * cy + cz * cz > 1);
+    const cr = Math.hypot(cx, cy, cz);
+    debris.clump[i * 3] = cx * cr;
+    debris.clump[i * 3 + 1] = cy * cr;
+    debris.clump[i * 3 + 2] = cz * cr;
+    // 꼬리 끝(먼저 흘린 것, u = 0)은 가늘고 머리 쪽(나중에 흘린 것, u = 1)으로 갈수록 두꺼워진다
+    const width = cloudRadius * (tipWidth + (1 - tipWidth) * u);
+    debris.offset[i * 3] = x * width;
+    debris.offset[i * 3 + 1] = y * width;
+    debris.offset[i * 3 + 2] = z * width;
     if (!el.hyperbolic && horizonRatio > 0) {
       const semiLatus = 2 * periapsis + 2 * epsilon * periapsis * periapsis;
       debris.turnRate[i] = periapsisShiftPerOrbit(horizonRatio, semiLatus, maxShift) / (FULL_TURN * el.a ** 1.5);
     }
+    markCircular(debris, i, el, epsilon, periapsis, discSpread);
   }
   return debris;
 }
@@ -222,7 +242,7 @@ function seededRandom(seed) {
 
 // 부스러기 알갱이들을 만든다. 모든 알갱이는 별이 r = 1(조석 반지름)에 닿는 순간 같은 자리에서 출발하고,
 // 에너지만 다르다(균일하게 -ΔE ~ +ΔE). 시작 위치 흔들림은 별 덩어리의 크기 안에서 무작위.
-export function buildDebris({ count, periapsis, spread, cloudRadius, seed, horizonRatio = 0, maxShift = 0, stretch = { along: 1, across: 1 } }) {
+export function buildDebris({ count, periapsis, spread, cloudRadius, seed, horizonRatio = 0, maxShift = 0, discSpread = 0, stretch = { along: 1, across: 1 } }) {
   const random = seededRandom(seed);
   const disruptionTime = parabolicTimeAtRadius(1, periapsis);
   const debris = {
@@ -236,6 +256,7 @@ export function buildDebris({ count, periapsis, spread, cloudRadius, seed, horiz
     // 알갱이마다 처음 보이기 시작하는 때와 타원의 고정 회전각(rad). 한꺼번에 찢기는 방식에서는 모두 찢긴 때, 회전 0.
     releaseTime: new Float64Array(count).fill(disruptionTime),
     rotation: new Float64Array(count),
+    circular: newCircularArrays(count),
   };
   // 찢기는 순간 별 덩어리는 반지름 방향으로 늘어나 있다
   const [dx, dy] = parabolicPosition(disruptionTime, periapsis);
@@ -264,20 +285,61 @@ export function buildDebris({ count, periapsis, spread, cloudRadius, seed, horiz
       const semiLatus = 2 * periapsis + 2 * epsilon * periapsis * periapsis;
       debris.turnRate[i] = periapsisShiftPerOrbit(horizonRatio, semiLatus, maxShift) / (FULL_TURN * el.a ** 1.5);
     }
+    markCircular(debris, i, el, epsilon, periapsis, discSpread);
   }
   return debris;
 }
 
 // t 시각의 알갱이 i 위치를 out에 [x, y, z]로 쓴다(궤도 평면 x, y와 수직 방향 z). 흔들림은 퍼질수록 조금 커진다.
-export function debrisPosition(debris, i, t, thickening, out) {
+// 원반 형성: 묶인 알갱이는 돌아와 두 번째로 가장 가까운 점을 지날 때부터, 각운동량을 지키며 원 궤도(반지름 = 반통경 p)로 정리된다.
+// 반지름은 가장 가까운 거리에서 p까지 지수로 늘어나고(시간 상수 circularizeTime), 각도는 원 궤도 속도로 돈다.
+function newCircularArrays(count) {
+  return {
+    time: new Float64Array(count).fill(Infinity),
+    angle: new Float64Array(count),
+    periapsis: 0,
+    semiLatus: new Float64Array(count),
+  };
+}
+
+function markCircular(debris, i, el, epsilon, periapsis, discSpread) {
+  if (el.hyperbolic) return;
+  const c = debris.circular;
+  const period = FULL_TURN * el.a ** 1.5;
+  c.time[i] = debris.periapsisTime[i] + period;
+  c.angle[i] = debris.rotation[i] + debris.turnRate[i] * period;
+  c.periapsis = periapsis;
+  // 원반이 얇은 고리 하나가 되지 않도록 알갱이마다 정리되는 반지름을 반통경 둘레로 흩뜨린다
+  const jitter = (i * 0.6180339887) % 1;
+  c.semiLatus[i] = (2 * periapsis + 2 * epsilon * periapsis * periapsis) * (1 + discSpread * (2 * jitter - 1));
+}
+
+export function circularRadius(rp, semiLatus, sinceReturn, circularizeTime) {
+  return rp + (semiLatus - rp) * (1 - Math.exp(-sinceReturn / circularizeTime));
+}
+
+// circularizeTime이 0이면 원반 형성을 끈다(타원 궤도를 그대로 따라간다).
+export function debrisPosition(debris, i, t, thickening, out, circularizeTime = 0) {
   const tau = t - debris.periapsisTime[i];
-  const [ox, oy] = orbitPosition(debris.el[i], tau);
-  // 근점 이동: 가장 가까운 점을 지난 뒤부터 타원 전체가 천천히 돌아간다
-  const turn = debris.turnRate[i] * Math.max(tau, 0) + debris.rotation[i];
-  const cosTurn = Math.cos(turn);
-  const sinTurn = Math.sin(turn);
-  const x = ox * cosTurn - oy * sinTurn;
-  const y = ox * sinTurn + oy * cosTurn;
+  let x;
+  let y;
+  const c = debris.circular;
+  if (circularizeTime > 0 && t > c.time[i]) {
+    const since = t - c.time[i];
+    const p = c.semiLatus[i];
+    const r = circularRadius(c.periapsis, p, since, circularizeTime);
+    const angle = c.angle[i] + since * Math.pow(p, -1.5);
+    x = r * Math.cos(angle);
+    y = r * Math.sin(angle);
+  } else {
+    const [ox, oy] = orbitPosition(debris.el[i], tau);
+    // 근점 이동: 가장 가까운 점을 지난 뒤부터 타원 전체가 천천히 돌아간다
+    const turn = debris.turnRate[i] * Math.max(tau, 0) + debris.rotation[i];
+    const cosTurn = Math.cos(turn);
+    const sinTurn = Math.sin(turn);
+    x = ox * cosTurn - oy * sinTurn;
+    y = ox * sinTurn + oy * cosTurn;
+  }
   const grown = 1 + thickening * Math.min(Math.max((t - debris.disruptionTime) / 20, 0), 1);
   out[0] = x + debris.offset[i * 3] * grown;
   out[1] = y + debris.offset[i * 3 + 1] * grown;

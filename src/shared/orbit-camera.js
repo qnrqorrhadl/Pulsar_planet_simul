@@ -8,6 +8,8 @@ export function createOrbitCamera(canvas, camera, v, onUserDrag = () => {}) {
   let yaw = degToRad(v.defaultYawDeg);
   let pitch = degToRad(v.defaultPitchDeg);
   let distance = v.cameraDistance;
+  // 모드가 시간에 따라 자동으로 다가가거나 물러날 때 쓰는 배율(1이면 사용자가 정한 거리 그대로)
+  let zoomFactor = 1;
 
   let dragging = false;
   let lastX = 0;
@@ -45,6 +47,9 @@ export function createOrbitCamera(canvas, camera, v, onUserDrag = () => {}) {
   );
 
   return {
+    setZoomFactor(factor) {
+      zoomFactor = factor;
+    },
     setView(newYaw, newPitch) {
       yaw = newYaw;
       pitch = newPitch;
@@ -53,9 +58,9 @@ export function createOrbitCamera(canvas, camera, v, onUserDrag = () => {}) {
       const maxPitch = degToRad(v.maxPitchDeg);
       pitch = clamp(pitch, -maxPitch, maxPitch);
       camera.position.set(
-        distance * Math.cos(pitch) * Math.sin(yaw),
-        distance * Math.sin(pitch),
-        distance * Math.cos(pitch) * Math.cos(yaw)
+        distance * zoomFactor * Math.cos(pitch) * Math.sin(yaw),
+        distance * zoomFactor * Math.sin(pitch),
+        distance * zoomFactor * Math.cos(pitch) * Math.cos(yaw)
       );
       camera.lookAt(0, 0, 0);
     },

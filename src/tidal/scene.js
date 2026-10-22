@@ -16,6 +16,7 @@ export function createTidalScene(canvas, config) {
     hot: new THREE.Color(cssVar('--tde-hot')),
     cool: new THREE.Color(cssVar('--tde-cool')),
     glow: cssVar('--tde-glow'),
+    star: new THREE.Color(cssVar('--tde-star-core')),
   };
 
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
@@ -122,7 +123,7 @@ export function createTidalScene(canvas, config) {
   const mixed = new THREE.Color();
 
   return {
-    // state: { time, periapsis, reach, debris, disrupted, horizonVisual, starHidden, starScale, starStretch, flash, collisionAt, rate }
+    // state: { time, periapsis, reach, debris, disrupted, horizonVisual, starHidden, starScale, starStretch, flash, collisionAt, rate, thickening, viewZoom, film, showParticles, clumpScale }
     update(state) {
       const { time, periapsis, debris, horizonVisual } = state;
       rebuildOrbit(periapsis, state.reach);
@@ -148,33 +149,71 @@ export function createTidalScene(canvas, config) {
         flash.material.opacity = config.collision.flashOpacity * state.flash;
       }
 
-      if (state.disrupted) {
+      if (state.showParticles) {
+        // 연출 보기: 아직 흘려지지 않은 알갱이는 별 자리에 둥근 덩어리로 모여 있다가 하나씩 떨어져 나가 꼬리가 된다
+        const film = state.film;
+        const head = config.cinematic.head;
+        const [starX, starY] = film ? parabolicPosition(time, periapsis) : [0, 0];
         for (let i = 0; i < count; i++) {
-          if (time < debris.releaseTime[i]) {
-            particleColors[i * 3] = 0;
-            particleColors[i * 3 + 1] = 0;
-            particleColors[i * 3 + 2] = 0;
-            continue;
+          const released = time >= debris.releaseTime[i];
+          let x;
+          let y;
+          let z;
+          let r;
+          let starMix = 0;
+          let level = 1;
+          const age = Math.max(time - debris.releaseTime[i], 0);
+          if (film) {
+            const cx = debris.clump[i * 3];
+            const cy = debris.clump[i * 3 + 1];
+            const cz = debris.clump[i * 3 + 2];
+            const size = head.radius * state.clumpScale;
+            if (!released) {
+              x = starX + cx * size;
+              y = starY + cy * size;
+              z = cz * size;
+              starMix = 1;
+              level = head.brightness * (1 + head.coreBoost * (1 - Math.hypot(cx, cy, cz)) ** 2);
+            } else {
+              debrisPosition(debris, i, time, state.thickening, scratch, config.disc.circularizeTime);
+              const relax = Math.exp(-age / head.relax);
+              x = scratch[0] + cx * size * relax;
+              y = scratch[1] + cy * size * relax;
+              z = scratch[2] + cz * size * relax;
+              starMix = Math.exp(-age / head.cool);
+            }
+          } else {
+            if (!released) {
+              particleColors[i * 3] = 0;
+              particleColors[i * 3 + 1] = 0;
+              particleColors[i * 3 + 2] = 0;
+              continue;
+            }
+            debrisPosition(debris, i, time, state.thickening, scratch, config.disc.circularizeTime);
+            [x, y, z] = scratch;
           }
-          debrisPosition(debris, i, time, config.particles.thickening, scratch);
-          const world = toWorld(scratch[0], scratch[1], scratch[2]);
-          const r = Math.hypot(scratch[0], scratch[1], scratch[2]);
+          r = Math.hypot(x, y, z);
+          const world = toWorld(x, y, z);
           positions[i * 3] = world[0];
           positions[i * 3 + 1] = world[1];
           positions[i * 3 + 2] = world[2];
-          // 블랙홀 가까이는 뜨겁고 푸르게, 멀면 주황으로
+          // 블랙홀 가까이는 뜨겁고 푸르게, 멀면 주황으로. 방금 떨어져 나온 알갱이는 별 색에서 식어 간다.
           const heat = Math.exp(-r / v.heatRadius);
           mixed.copy(colors.cool).lerp(colors.hot, heat);
-          const swallowed = r < horizonVisual ? 0 : 0.55 + 0.45 * heat;
-          particleColors[i * 3] = mixed.r * swallowed;
-          particleColors[i * 3 + 1] = mixed.g * swallowed;
-          particleColors[i * 3 + 2] = mixed.b * swallowed;
+          if (starMix > 0) mixed.lerp(colors.star, starMix);
+          const boost = 1 + v.headBoost * Math.exp(-age / v.headDecay);
+          const visible = r < horizonVisual ? 0 : (0.55 + 0.45 * heat) * boost * level;
+          particleColors[i * 3] = mixed.r * visible;
+          particleColors[i * 3 + 1] = mixed.g * visible;
+          particleColors[i * 3 + 2] = mixed.b * visible;
         }
         geometry.attributes.position.needsUpdate = true;
         geometry.attributes.color.needsUpdate = true;
       }
-      points.visible = state.disrupted;
+      points.visible = Boolean(state.showParticles);
+      starBody.visible = !state.film;
 
+      orbit.setZoomFactor(state.viewZoom);
       orbit.place();
       renderer.render(scene, camera);
     },

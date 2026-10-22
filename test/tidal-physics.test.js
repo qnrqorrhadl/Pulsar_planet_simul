@@ -237,3 +237,74 @@ test('연출 꼬리: 일찍 흘린 알갱이일수록 더 묶여 있다', () => 
   assert.ok(d.el[0].a < d.el[49].a || d.el[49].hyperbolic);
   assert.ok(d.releaseTime[0] < d.releaseTime[99]);
 });
+
+test('원반 형성: 돌아온 뒤 반지름이 반통경으로 정리되고 처음엔 근점에서 이어진다', () => {
+  const periapsis = 0.8;
+  const d = buildDebris({ count: 200, periapsis, spread: 0.08, cloudRadius: 0, seed: 2 });
+  const i = 20; // 묶인 알갱이
+  const c = d.circular;
+  assert.ok(Number.isFinite(c.time[i]));
+  const out = [0, 0, 0];
+  debrisPosition(d, i, c.time[i] + 1e-9, 0, out, 5);
+  near(Math.hypot(out[0], out[1]), periapsis, 1e-3);
+  debrisPosition(d, i, c.time[i] + 100, 0, out, 5);
+  near(Math.hypot(out[0], out[1]), c.semiLatus[i], 1e-3);
+  // 끄면(circularizeTime 0) 타원을 계속 따라가므로 반지름이 반통경이 아니다
+  debrisPosition(d, i, c.time[i] + 0.5 * 2 * Math.PI * d.el[i].a ** 1.5, 0, out, 0);
+  assert.ok(Math.hypot(out[0], out[1]) > c.semiLatus[i] * 1.5);
+});
+
+test('날아가는 알갱이는 원반이 되지 않는다', () => {
+  const d = buildDebris({ count: 100, periapsis: 1, spread: 0.08, cloudRadius: 0, seed: 2 });
+  assert.equal(d.circular.time[99], Infinity);
+});
+
+test('꼬리 묶임 배수가 클수록 첫 알갱이가 빨리 돌아온다', () => {
+  const slow = buildStream({ count: 100, periapsis: 1, spread: 0.08, cloudRadius: 0, seed: 1, startRadius: 4.5, endFactor: 1.2, tailBind: 1 });
+  const fast = buildStream({ count: 100, periapsis: 1, spread: 0.08, cloudRadius: 0, seed: 1, startRadius: 4.5, endFactor: 1.2, tailBind: 2 });
+  assert.ok(fast.circular.time[0] < slow.circular.time[0] * 0.8);
+});
+
+test('연출 꼬리는 별보다 앞서지 않고 뒤에 처진다', () => {
+  const periapsis = 0.455;
+  const d = buildStream({
+    count: 300, periapsis, spread: 0.08, cloudRadius: 0, seed: 1,
+    startRadius: config.cinematic.startRadius, endFactor: config.cinematic.endFactor,
+    tailBind: config.cinematic.tailBind, bindLimit: config.cinematic.bindLimit,
+  });
+  const out = [0, 0, 0];
+  for (let i = 0; i < 100; i += 5) {
+    for (const dt of [0.5, 1.5]) {
+      const t = d.releaseTime[i] + dt;
+      if (t > 0) continue; // 가장 가까운 점 앞(들어오는 중)만 비교
+      debrisPosition(d, i, t, 0, out, 0);
+      const [sx, sy] = parabolicPosition(t, periapsis);
+      assert.ok(Math.hypot(out[0], out[1]) >= Math.hypot(sx, sy) - 0.02, `입자 ${i} +${dt}`);
+    }
+  }
+});
+
+test('연출 꼬리는 끝이 가늘고 머리 쪽으로 갈수록 두껍다', () => {
+  const d = buildStream({ count: 2000, periapsis: 0.455, spread: 0.08, cloudRadius: 0.1, seed: 5, startRadius: 4.5, endFactor: 1.2, tipWidth: 0.1 });
+  const meanSize = (from, to) => {
+    let sum = 0;
+    for (let i = from; i < to; i++) sum += Math.hypot(d.offset[i * 3], d.offset[i * 3 + 1], d.offset[i * 3 + 2]);
+    return sum / (to - from);
+  };
+  const tip = meanSize(0, 200);
+  const middle = meanSize(900, 1100);
+  const head = meanSize(1800, 2000);
+  assert.ok(tip < middle && middle < head);
+  assert.ok(head > tip * 4);
+});
+
+test('별 덩어리는 중심에 몰리고 반지름 1 안에 있다', () => {
+  const d = buildStream({ count: 2000, periapsis: 0.455, spread: 0.08, cloudRadius: 0.1, seed: 5, startRadius: 4.5, endFactor: 1.2 });
+  let inner = 0;
+  for (let i = 0; i < d.count; i++) {
+    const r = Math.hypot(d.clump[i * 3], d.clump[i * 3 + 1], d.clump[i * 3 + 2]);
+    assert.ok(r <= 1 + 1e-6);
+    if (r < 0.5) inner++;
+  }
+  assert.ok(inner / d.count > 0.3); // 고르게 퍼지면 0.125, 중심에 몰리면 약 0.35
+});

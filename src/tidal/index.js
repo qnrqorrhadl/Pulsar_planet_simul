@@ -60,17 +60,18 @@ function analyze(state) {
   const swallowedWhole = horizonRatio >= 1;
   const disrupts = !swallowedWhole && disruptsAt(state.beta, physics);
   const spread = energySpread(state.bhMassSolar, state.starMassSolar, physics);
-  const firstReturn = firstReturnTime(spread);
+  const film = state.cinematic && disrupts;
+  const firstReturn = firstReturnTime(film ? spread * config.cinematic.tailBind : spread);
   const start = parabolicTimeAtRadius(physics.startRadius, periapsis);
   let end;
-  const film = state.cinematic && disrupts;
   if (disrupts) end = firstReturn * (film ? config.cinematic.loopFirstReturns : physics.loopFirstReturns);
   else if (swallowedWhole) end = parabolicTimeAtRadius(Math.max(horizonRatio, periapsis), periapsis) + SWALLOW_LINGER;
   else end = -start;
-  const semiLatus = 2 * periapsis - 2 * spread * periapsis * periapsis; // 가장 단단히 묶인 부스러기(ε = -spread)
+  const boundSpread = film ? spread * config.cinematic.tailBind : spread;
+  const semiLatus = 2 * periapsis - 2 * boundSpread * periapsis * periapsis; // 가장 단단히 묶인 부스러기(ε = -boundSpread)
   const shift = periapsisShiftPerOrbit(horizonRatio, semiLatus, config.collision.maxShiftPerOrbit);
   return {
-    collisionAt: disrupts ? collisionPoint(orbitElements(-spread, periapsis), semiLatus, shift) : null,
+    collisionAt: disrupts ? collisionPoint(orbitElements(-boundSpread, periapsis), semiLatus, shift) : null,
     periapsis,
     horizonRatio,
     horizonVisual: Math.min(Math.max(horizonRatio, visual.minHorizonVisual), MAX_HORIZON_VISUAL),
@@ -91,8 +92,12 @@ function analyze(state) {
           seed: particles.seed,
           startRadius: config.cinematic.startRadius,
           endFactor: config.cinematic.endFactor,
+          tailBind: config.cinematic.tailBind,
+          bindLimit: config.cinematic.bindLimit,
+          tipWidth: config.cinematic.tipWidth,
           horizonRatio,
           maxShift: config.collision.maxShiftPerOrbit,
+          discSpread: config.disc.radiusSpread,
         })
       : disrupts
       ? buildDebris({
@@ -103,11 +108,22 @@ function analyze(state) {
           seed: particles.seed,
           horizonRatio,
           maxShift: config.collision.maxShiftPerOrbit,
+          discSpread: config.disc.radiusSpread,
         })
       : null,
     tidalKm: tidalRadiusKm(state.bhMassSolar, state.starMassSolar, physics),
     realReturn: realFirstReturnSeconds(state.bhMassSolar, state.starMassSolar, physics),
   };
+}
+
+// 원반이 만들어지는 때에 카메라가 부드럽게 다가간다
+const smoothstep = (x) => {
+  const t = Math.min(Math.max(x, 0), 1);
+  return t * t * (3 - 2 * t);
+};
+function discZoom(inFirstReturns) {
+  const { zoomFactor, zoomStart, zoomEnd } = config.disc;
+  return 1 + (zoomFactor - 1) * smoothstep((inFirstReturns - zoomStart) / (zoomEnd - zoomStart));
 }
 
 function describe(a, disrupted) {
@@ -212,6 +228,11 @@ export function createTidalMode(doc) {
         starStretch: stretch,
         flash: a.disrupts ? collisionFlash(inFirstReturns, config.graph.riseStart, config.collision.burstCenter, config.collision.burstWidth) : 0,
         collisionAt: a.collisionAt,
+        thickening: a.film ? config.cinematic.thickening : config.particles.thickening,
+        film: a.film,
+        showParticles: a.film || disrupted,
+        clumpScale: starScale,
+        viewZoom: a.disrupts ? discZoom(inFirstReturns) : 1,
         rate,
       });
       graph.draw({ inFirstReturns: a.disrupts ? inFirstReturns : null });
