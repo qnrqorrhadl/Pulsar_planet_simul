@@ -9,9 +9,9 @@ export const config = {
   view: {
     // 처음과 "시점 초기화"의 카메라 거리(rs). 실제 거리는 질량을 곱해서 km로 바꾼다.
     defaultDistanceRs: 25,
-    // 카메라 거리 제한(rs): 원반 바깥(10)보다 멀어야 하고, 계산은 maxRenderRs까지만 직접 하며
+    // 카메라 거리 제한(rs): 원반 바깥(가장 큰 원반 옷의 outerRadius)보다 멀어야 하고, 계산은 maxRenderRs까지만 직접 하며
     // 그보다 먼 것은 시야를 넓혀 작게 보이게 한다. maxTrueRs보다 멀면 거의 점이라 멈춘다.
-    minRs: 12,
+    minRs: 16,
     maxRenderRs: 60,
     maxTrueRs: 2000,
     scaleBarTargetPx: 140,
@@ -46,7 +46,23 @@ export const config = {
     // 궁수자리 A*: 먹는 양이 아주 적어 작고 어둡고 붉다
     hungry: { hotToken: '--disk-sgr-hot', coolToken: '--disk-sgr-cool', outerRadius: 8, gain: 0.55 },
     // SS 433: 한계 이상으로 먹어서 크고 뜨겁고 푸른 흰색이다
-    feasting: { hotToken: '--disk-ss-hot', coolToken: '--disk-ss-cool', outerRadius: 10, gain: 1.35 },
+    // 얇은 원반 위에 옅은 구름 층을 얹어 부푼 느낌을 낸다(구름 값은 원반 옷마다 따로 둔다: 높이 heightRatio, 밝기 gain)
+    feasting: {
+      hotToken: '--disk-ss-hot',
+      coolToken: '--disk-ss-cool',
+      outerRadius: 14,
+      gain: 1.35,
+      cloud: {
+        innerStart: 3.0,
+        innerEnd: 3.8,
+        outerStart: 8,
+        outerEnd: 14,
+        heightRatio: 0.16,
+        flare: 1.4,
+        falloff: 0.6,
+        gain: 0.65,
+      },
+    },
   },
   defaultDiskStyle: 'standard',
   stars: {
@@ -78,7 +94,7 @@ export const config = {
     jet: { id: 'jet', disk: true, cloud: false, jet: 'straight' },
     cloud: { id: 'cloud', disk: false, cloud: true, jet: 'none' },
     cloudjet: { id: 'cloudjet', disk: false, cloud: true, jet: 'straight' },
-    precess: { id: 'precess', disk: true, cloud: false, jet: 'precessing' },
+    precess: { id: 'precess', disk: true, cloud: true, jet: 'precessing' },
   },
   defaultShape: 'disk',
   // 제트 불규칙함 조절(아래 두 제트 공통 뜻): wobble=줄기가 휘는 정도(높이의 비율), wobbleScale=휘는 마디 길이(rs), wobbleSpeed=마디가 흐르는 빠르기,
@@ -115,6 +131,8 @@ export const config = {
     outerStart: 4,
     outerEnd: 8,
     heightRatio: 0.3,
+    // 두께가 반지름에 따라 늘어나는 정도: 1이면 정비례, 클수록 바깥이 나팔처럼 더 두꺼워진다
+    flare: 1,
     falloff: 1.5,
     gain: 1.3,
     speedScale: 0.8,
@@ -159,7 +177,7 @@ export const config = {
     'bh-preset-m87': { massSolar: 6.5e9, distanceRs: 25, shape: 'cloudjet', diskStyle: 'standard', elevationDeg: 73 },
     // 질량은 아직 정확히 모른다(대략 10~20배)
     // SS 433은 원반을 거의 옆에서(약 11°) 본다
-    'bh-preset-ss433': { massSolar: 15, distanceRs: 25, shape: 'precess', diskStyle: 'feasting', elevationDeg: 11 },
+    'bh-preset-ss433': { massSolar: 15, distanceRs: 40, shape: 'precess', diskStyle: 'feasting', elevationDeg: 11 },
   },
   hints: {
     edgeOnMaxDeg: 5,

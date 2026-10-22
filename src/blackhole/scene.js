@@ -27,6 +27,14 @@ export function createBlackHoleScene(canvas, config) {
     uInner: { value: ISCO },
     uOuter: { value: disk.outerRadius },
     uDiskGain: { value: 1 },
+    uCloudInnerA: { value: 0 },
+    uCloudInnerB: { value: 0 },
+    uCloudOuterA: { value: 0 },
+    uCloudOuterB: { value: 0 },
+    uCloudHeight: { value: 0 },
+    uCloudFlare: { value: 1 },
+    uCloudFalloff: { value: 0 },
+    uCloudGain: { value: 0 },
     uTime: { value: 0 },
     uHot: { value: new THREE.Color(cssVar('--disk-hot')) },
     uCool: { value: new THREE.Color(cssVar('--disk-cool')) },
@@ -76,6 +84,15 @@ export function createBlackHoleScene(canvas, config) {
       uniforms.uCool.value.set(cssVar(style.coolToken));
       uniforms.uOuter.value = style.outerRadius;
       uniforms.uDiskGain.value = style.gain;
+      const cloud = style.cloud ?? config.cloud;
+      uniforms.uCloudInnerA.value = cloud.innerStart;
+      uniforms.uCloudInnerB.value = cloud.innerEnd;
+      uniforms.uCloudOuterA.value = cloud.outerStart;
+      uniforms.uCloudOuterB.value = cloud.outerEnd;
+      uniforms.uCloudHeight.value = cloud.heightRatio;
+      uniforms.uCloudFlare.value = cloud.flare;
+      uniforms.uCloudFalloff.value = cloud.falloff;
+      uniforms.uCloudGain.value = cloud.gain;
       dirty = true;
     },
     invalidate() {

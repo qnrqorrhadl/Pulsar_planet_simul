@@ -89,6 +89,16 @@ test('프리셋이 가리키는 원반 옷이 실제로 있고 값이 올바르�
   }
 });
 
+test('원반 옷의 구름 값이 올바르고 구름 모양 값이 셰이더에서 바뀔 수 있다', () => {
+  assert.match(fragment, /uniform float uCloudGain;/);
+  for (const style of Object.values(config.diskStyles)) {
+    if (!style.cloud) continue;
+    const c = style.cloud;
+    assert.ok(c.innerStart < c.innerEnd && c.innerEnd < c.outerStart && c.outerStart < c.outerEnd);
+    assert.ok(c.outerEnd <= style.outerRadius && c.heightRatio > 0 && c.gain > 0 && c.flare > 0);
+  }
+});
+
 test('프리셋이 가리키는 모양이 실제로 있다', () => {
   for (const preset of Object.values(config.presets)) {
     assert.ok(config.shapes[preset.shape], preset.shape);

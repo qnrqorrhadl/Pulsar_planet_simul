@@ -69,13 +69,14 @@ export function buildBlackHoleFragment(tracing, disk, stars, jet, cloud, precess
   const float JET_RAGGED = ${glFloat(jet.ragged)};
   const float JET_RAGGED_SCALE = ${glFloat(jet.raggedScale)};
   const float JET_RAGGED_SPEED = ${glFloat(jet.raggedSpeed)};
-  const float CLOUD_INNER_A = ${glFloat(cloud.innerStart)};
-  const float CLOUD_INNER_B = ${glFloat(cloud.innerEnd)};
-  const float CLOUD_OUTER_A = ${glFloat(cloud.outerStart)};
-  const float CLOUD_OUTER_B = ${glFloat(cloud.outerEnd)};
-  const float CLOUD_HEIGHT = ${glFloat(cloud.heightRatio)};
-  const float CLOUD_FALLOFF = ${glFloat(cloud.falloff)};
-  const float CLOUD_GAIN = ${glFloat(cloud.gain)};
+  uniform float uCloudInnerA;
+  uniform float uCloudInnerB;
+  uniform float uCloudOuterA;
+  uniform float uCloudOuterB;
+  uniform float uCloudHeight;
+  uniform float uCloudFlare;
+  uniform float uCloudFalloff;
+  uniform float uCloudGain;
   const float CLOUD_SPEED = ${glFloat(cloud.speedScale)};
   const float CLOUD_BEAMING = ${glFloat(cloud.beamingPower)};
 
@@ -308,19 +309,20 @@ export function buildBlackHoleFragment(tracing, disk, stars, jet, cloud, precess
       // 안쪽은 블랙홀 가까이까지, 두께는 중심에서 멀수록 두꺼워진다. 도는 방향 도플러로 한쪽이 훨씬 밝다.
       if (uCloudOn > 0.5) {
         float ringRadius = length(position.xz);
-        float thick = CLOUD_HEIGHT * max(ringRadius, 1.5);
+        // 두께: 반지름 6 rs에서 heightRatio·6. flare가 1이면 반지름에 정비례, 1보다 크면 바깥으로 갈수록 나팔처럼 더 빨리 두꺼워진다.
+        float thick = uCloudHeight * 6.0 * pow(max(ringRadius, 1.5) / 6.0, uCloudFlare);
         float lift = position.y / thick;
-        if (lift * lift < 9.0 && rNow < CLOUD_OUTER_B) {
-          float radial = pow(max(ringRadius, 1.0), -CLOUD_FALLOFF)
-            * smoothstep(CLOUD_INNER_A, CLOUD_INNER_B, rNow)
-            * (1.0 - smoothstep(CLOUD_OUTER_A, CLOUD_OUTER_B, ringRadius));
+        if (lift * lift < 9.0 && rNow < uCloudOuterB) {
+          float radial = pow(max(ringRadius, 1.0), -uCloudFalloff)
+            * smoothstep(uCloudInnerA, uCloudInnerB, rNow)
+            * (1.0 - smoothstep(uCloudOuterA, uCloudOuterB, ringRadius));
           float cloudSpeed = min(CLOUD_SPEED * sqrt(0.5 * HORIZON / max(ringRadius - HORIZON, 0.6)), 0.6);
           vec3 around = normalize(vec3(-position.z, 0.0, position.x) + vec3(1e-4, 0.0, 0.0));
           float cloudGamma = 1.0 / sqrt(1.0 - cloudSpeed * cloudSpeed);
           float cloudShift = 1.0 / (cloudGamma * (1.0 - cloudSpeed * dot(around, -normalize(velocity))))
             * sqrt(max(1.0 - HORIZON / rNow, 0.0));
           vec3 glow = mix(uCool, uHot, clamp(0.35 + 0.6 * (cloudShift - 0.8), 0.0, 1.0));
-          color += transmit * glow * (radial * exp(-0.5 * lift * lift) * pow(cloudShift, CLOUD_BEAMING) * CLOUD_GAIN * dt);
+          color += transmit * glow * (radial * exp(-0.5 * lift * lift) * pow(cloudShift, CLOUD_BEAMING) * uCloudGain * dt);
         }
       }
 
