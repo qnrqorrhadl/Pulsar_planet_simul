@@ -16,16 +16,17 @@ export const rsKm = (solarMasses) => solarMasses * SCHWARZSCHILD_KM_PER_SOLAR_MA
 
 // 실제 카메라 거리(km)를 계산용 거리로 바꾼다. 길이 단위는 rs.
 // 계산은 render 거리에서 하고(너무 멀면 광선이 모자라서 minRs..maxRenderRs로 제한), 더 먼 만큼은
-// 시야를 넓혀(zoom > 1) 블랙홀이 그만큼 작게 보이게 한다. 너무 가까우면 minRs에서 멈춘다.
+// 시야를 넓혀(zoom > 1) 블랙홀이 그만큼 작게 보이게 한다. 계산 거리보다 가까운 쪽은 시야를 좁혀(zoom < 1) 크게 보이게 하고 minTrueRs에서 멈춘다.
 export function viewPlan(distanceKm, solarMasses, limits) {
   const wanted = distanceKm / rsKm(solarMasses);
-  const trueRs = clamp(wanted, limits.minRs, limits.maxTrueRs);
+  const nearest = limits.minTrueRs ?? limits.minRs;
+  const trueRs = clamp(wanted, nearest, limits.maxTrueRs);
   const renderRs = clamp(trueRs, limits.minRs, limits.maxRenderRs);
   return {
     trueRs,
     renderRs,
     zoom: trueRs / renderRs,
-    tooNear: wanted < limits.minRs,
+    tooNear: wanted < nearest,
     tooFar: wanted > limits.maxTrueRs,
   };
 }

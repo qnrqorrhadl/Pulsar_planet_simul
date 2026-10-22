@@ -83,7 +83,7 @@ export function createBlackHoleMode(doc) {
 
   // 질량을 키우면 같은 거리가 rs로는 가까워진다. 최소 거리보다 가까워지면 카메라를 뒤로 민다.
   function enforceLimits() {
-    const nearest = view.minRs * rsKm(state.massSolar);
+    const nearest = view.minTrueRs * rsKm(state.massSolar);
     if (state.distanceKm < nearest) {
       state.distanceKm = nearest;
       sliders.syncAll();
@@ -143,16 +143,34 @@ export function createBlackHoleMode(doc) {
     setText(scaleLabel, bar.label);
   }
 
+  // 화면에 보이는 질량과 거리: 값이 바뀌면 로그 눈금으로 부드럽게 따라가서 줌 인·아웃처럼 보인다
+  let shown = null;
+  function followView(dt) {
+    if (!shown || view.zoomEase <= 0) {
+      shown = { massSolar: state.massSolar, distanceKm: state.distanceKm };
+      return;
+    }
+    const k = 1 - Math.exp(-dt * view.zoomEase);
+    for (const key of ['massSolar', 'distanceKm']) {
+      const from = Math.log(shown[key]);
+      const to = Math.log(state[key]);
+      shown[key] = Math.abs(to - from) < 1e-4 ? state[key] : Math.exp(from + (to - from) * k);
+    }
+  }
+
   return {
     start() {
+      shown = null;
       scene.invalidate();
     },
     stop() {},
     frame(dt) {
       enforceLimits();
       if (!state.paused) state.diskTime += dt * state.diskSpeed;
-      const km = rsKm(state.massSolar);
-      const plan = viewPlan(state.distanceKm, state.massSolar, view);
+      followView(dt);
+      const km = rsKm(shown.massSolar);
+      const targetKm = rsKm(state.massSolar);
+      const plan = viewPlan(shown.distanceKm, shown.massSolar, view);
 
       scene.update({
         elevationRad: degToRad(state.elevationDeg),
@@ -166,13 +184,13 @@ export function createBlackHoleMode(doc) {
       });
       updateScaleBar(plan.trueRs, km);
 
-      setText(readouts.horizon, formatLength(SCHWARZSCHILD_RADIUS * km));
-      setText(readouts.ring, formatLength(PHOTON_SPHERE * km));
-      const diskLength = (rs) => (state.shape.disk ? formatLength(rs * km) : '없음');
+      setText(readouts.horizon, formatLength(SCHWARZSCHILD_RADIUS * targetKm));
+      setText(readouts.ring, formatLength(PHOTON_SPHERE * targetKm));
+      const diskLength = (rs) => (state.shape.disk ? formatLength(rs * targetKm) : '없음');
       setText(readouts.isco, diskLength(ISCO));
-      setText(readouts.shadow, formatLength(CRITICAL_IMPACT * km));
+      setText(readouts.shadow, formatLength(CRITICAL_IMPACT * targetKm));
       setText(readouts.disk, diskLength(state.diskStyle.outerRadius));
-      setText(readouts.camera, `${Math.round(plan.trueRs)} rs`);
+      setText(readouts.camera, `${Math.round(viewPlan(state.distanceKm, state.massSolar, view).trueRs)} rs`);
 
       let status = describeView(state.elevationDeg, state.shape);
       if (plan.tooFar) status += ' 너무 멀어서 점처럼 보여요.';

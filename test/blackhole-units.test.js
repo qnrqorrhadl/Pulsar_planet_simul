@@ -61,8 +61,15 @@ test('카메라 거리 변환: 범위 안이면 그대로, 멀면 시야를 넓�
   assert.strictEqual(far.renderRs, limits.maxRenderRs);
   near(far.zoom, 300 / limits.maxRenderRs);
 
+  const close = viewPlan(10 * rs, mass, limits);
+  near(close.trueRs, 10);
+  assert.strictEqual(close.renderRs, limits.minRs);
+  near(close.zoom, 10 / limits.minRs);
+  assert.ok(close.zoom < 1);
+  assert.ok(!close.tooNear);
+
   const near1 = viewPlan(3 * rs, mass, limits);
-  assert.strictEqual(near1.trueRs, limits.minRs);
+  assert.strictEqual(near1.trueRs, limits.minTrueRs);
   assert.ok(near1.tooNear);
 
   const tooFar = viewPlan(1e6 * rs, mass, limits);

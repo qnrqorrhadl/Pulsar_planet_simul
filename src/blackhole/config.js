@@ -12,6 +12,10 @@ export const config = {
     // 카메라 거리 제한(rs): 원반 바깥(가장 큰 원반 옷의 outerRadius)보다 멀어야 하고, 계산은 maxRenderRs까지만 직접 하며
     // 그보다 먼 것은 시야를 넓혀 작게 보이게 한다. maxTrueRs보다 멀면 거의 점이라 멈춘다.
     minRs: 16,
+    // 이보다 가까이는 시야를 좁혀(망원) 블랙홀이 더 크게 보이게 한다(클로즈업). 16 rs 장면을 확대해 보는 것이라 원반 바깥은 화면 밖으로 잘린다.
+    minTrueRs: 8,
+    // 질량이나 거리가 바뀔 때 카메라가 따라가는 빠르기(1/초). 클수록 빨리 따라간다. 0이면 바로 바뀐다.
+    zoomEase: 4,
     maxRenderRs: 60,
     maxTrueRs: 2000,
     scaleBarTargetPx: 140,
@@ -171,13 +175,14 @@ export const config = {
     recedeToken: '--jet-recede',
   },
   // 눌러서 한 번에 바꾸는 예: 질량(태양 질량 단위), 카메라 거리(rs), 주변 모양(shapes의 이름)
+  // 거리(rs)는 큰 블랙홀일수록 가깝게 잡아서, 별 블랙홀에서 넘어갈 때 카메라가 다가가며(줌 인) 블랙홀이 더 크게 보인다(실제 크기 차이는 너무 커서 이렇게 줄여 보여준다). 16 rs보다 가까운 값은 시야를 좁힌 클로즈업.
   // 홀로 떠도는 별 블랙홀은 보이지 않고, 궁수자리 A*는 흐릿한 원반, M87*은 도넛 모양 구름과 제트(EHT 사진),
   // SS 433은 원반과 나선으로 도는 제트를 가진다.
   presets: {
-    'bh-preset-stellar': { massSolar: 10, distanceRs: 25, shape: 'bare', diskStyle: 'standard' },
-    'bh-preset-sgr': { massSolar: 4.3e6, distanceRs: 25, shape: 'disk', diskStyle: 'hungry' },
+    'bh-preset-stellar': { massSolar: 10, distanceRs: 45, shape: 'bare', diskStyle: 'standard' },
+    'bh-preset-sgr': { massSolar: 4.3e6, distanceRs: 22, shape: 'disk', diskStyle: 'hungry' },
     // M87*은 EHT 사진처럼 거의 위에서(제트 축에서 약 17°) 본다
-    'bh-preset-m87': { massSolar: 6.5e9, distanceRs: 25, shape: 'cloudjet', diskStyle: 'standard', elevationDeg: 73 },
+    'bh-preset-m87': { massSolar: 6.5e9, distanceRs: 14, shape: 'cloudjet', diskStyle: 'standard', elevationDeg: 73 },
     // 질량은 아직 정확히 모른다(대략 10~20배)
     // SS 433은 원반을 거의 옆에서(약 11°) 본다
     'bh-preset-ss433': { massSolar: 15, distanceRs: 40, shape: 'precess', diskStyle: 'feasting', elevationDeg: 11 },
