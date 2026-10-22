@@ -150,6 +150,12 @@ export function createTidalScene(canvas, config) {
 
       if (state.disrupted) {
         for (let i = 0; i < count; i++) {
+          if (time < debris.releaseTime[i]) {
+            particleColors[i * 3] = 0;
+            particleColors[i * 3 + 1] = 0;
+            particleColors[i * 3 + 2] = 0;
+            continue;
+          }
           debrisPosition(debris, i, time, config.particles.thickening, scratch);
           const world = toWorld(scratch[0], scratch[1], scratch[2]);
           const r = Math.hypot(scratch[0], scratch[1], scratch[2]);

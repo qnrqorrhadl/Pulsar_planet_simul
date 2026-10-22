@@ -3,6 +3,7 @@ import { createBlackHoleMode } from './blackhole/index.js';
 import { createBinaryMode } from './binary/index.js';
 import { createInspiralMode } from './inspiral/index.js';
 import { createTidalMode } from './tidal/index.js';
+import { createGalaxyMode } from './galaxy/index.js';
 
 const MAX_FRAME_SECONDS = 0.1;
 const ERROR_MESSAGE =
@@ -14,6 +15,7 @@ const MODE_FACTORIES = {
   binary: createBinaryMode,
   inspiral: createInspiralMode,
   tidal: createTidalMode,
+  galaxy: createGalaxyMode,
 };
 
 const instances = {};

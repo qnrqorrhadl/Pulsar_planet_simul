@@ -38,10 +38,12 @@ export const config = {
     thickening: 2.5,
     seed: 7,
   },
-  // 별이 찢기기 직전의 늘어남(스파게티화)
-  stretch: { startRadius: 3.2, maxStretch: 5 },
+  // 연출 방식(별이 꼬리를 흘리며 지나감): 흘리기 시작하는 거리, 끝나는 때(시작 시각의 몇 배), 머리가 줄어드는 최소 크기, 구름 굵기, 화면 속도
+  cinematic: { startRadius: 4.5, endFactor: 1.2, headMinScale: 0.45, cloudRadius: 0.09, firstReturnSeconds: 40, loopFirstReturns: 1.5 },
+  // 별이 찢기기 직전의 늘어남(스파게티화). maxStretch 1 = 끔 (어색해서 꺼 둠)
+  stretch: { startRadius: 4.5, maxStretch: 1 },
   // 근점 이동(한 바퀴마다 타원이 돌아가는 각도)의 한계(rad). 일반상대론 식이 지평선 가까이에서는 맞지 않아서 제한한다.
-  collision: { maxShiftPerOrbit: 1.2, burstCenter: 1.1, burstWidth: 0.25, flashScale: 5, flashOpacity: 0.9, flashColorToken: '--tde-flash' },
+  collision: { maxShiftPerOrbit: 1.2, burstCenter: 1.1, burstWidth: 0.45, flashScale: 3.5, flashOpacity: 0.45, flashColorToken: '--tde-flash' },
   graph: { maxFirstReturns: 3.5, riseStart: 0.7 },
   visual: {
     cameraDistance: 40,

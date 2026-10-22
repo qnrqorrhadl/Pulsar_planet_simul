@@ -3,6 +3,7 @@ import { bindSliders, bindPauseButton } from '../shared/ui.js';
 import { formatLength, formatSolarMass } from '../shared/units.js';
 import {
   buildDebris,
+  buildStream,
   collisionFlash,
   collisionPoint,
   orbitElements,
@@ -62,7 +63,8 @@ function analyze(state) {
   const firstReturn = firstReturnTime(spread);
   const start = parabolicTimeAtRadius(physics.startRadius, periapsis);
   let end;
-  if (disrupts) end = firstReturn * physics.loopFirstReturns;
+  const film = state.cinematic && disrupts;
+  if (disrupts) end = firstReturn * (film ? config.cinematic.loopFirstReturns : physics.loopFirstReturns);
   else if (swallowedWhole) end = parabolicTimeAtRadius(Math.max(horizonRatio, periapsis), periapsis) + SWALLOW_LINGER;
   else end = -start;
   const semiLatus = 2 * periapsis - 2 * spread * periapsis * periapsis; // 가장 단단히 묶인 부스러기(ε = -spread)
@@ -77,8 +79,22 @@ function analyze(state) {
     firstReturn,
     start,
     end,
-    disruptionTime: parabolicTimeAtRadius(1, periapsis),
-    debris: disrupts
+    film,
+    firstReturnSeconds: film ? config.cinematic.firstReturnSeconds : physics.firstReturnSeconds,
+    disruptionTime: film ? parabolicTimeAtRadius(config.cinematic.startRadius, periapsis) : parabolicTimeAtRadius(1, periapsis),
+    debris: film
+      ? buildStream({
+          count: particles.count,
+          periapsis,
+          spread,
+          cloudRadius: config.cinematic.cloudRadius,
+          seed: particles.seed,
+          startRadius: config.cinematic.startRadius,
+          endFactor: config.cinematic.endFactor,
+          horizonRatio,
+          maxShift: config.collision.maxShiftPerOrbit,
+        })
+      : disrupts
       ? buildDebris({
           count: particles.count,
           periapsis,
@@ -112,6 +128,7 @@ export function createTidalMode(doc) {
     ...config.defaults,
     paused: window.matchMedia('(prefers-reduced-motion: reduce)').matches,
     time: 0,
+    cinematic: true,
   };
 
   const scene = createTidalScene(doc.getElementById('td-scene'), config);
@@ -122,7 +139,7 @@ export function createTidalMode(doc) {
   let analysis = null;
   let analysisKey = '';
   function refresh() {
-    const key = `${state.bhMassSolar}|${state.starMassSolar}|${state.beta}`;
+    const key = `${state.bhMassSolar}|${state.starMassSolar}|${state.beta}|${state.cinematic}`;
     if (key !== analysisKey) {
       analysisKey = key;
       analysis = analyze(state);
@@ -130,6 +147,11 @@ export function createTidalMode(doc) {
     }
     return analysis;
   }
+  const styleButton = doc.getElementById('td-btn-style');
+  styleButton.addEventListener('click', () => {
+    state.cinematic = !state.cinematic;
+    styleButton.textContent = state.cinematic ? '계산 보기로' : '연출 보기로';
+  });
   doc.getElementById('td-btn-restart').addEventListener('click', () => {
     state.time = refresh().start;
   });
@@ -147,7 +169,7 @@ export function createTidalMode(doc) {
       const a = refresh();
       const { physics } = config;
       if (!state.paused) {
-        state.time += (dt * state.speed * a.firstReturn) / physics.firstReturnSeconds;
+        state.time += (dt * state.speed * a.firstReturn) / a.firstReturnSeconds;
         if (state.time > a.end) state.time = a.start;
       }
 
@@ -155,7 +177,10 @@ export function createTidalMode(doc) {
       const sinceDisruption = state.time - a.disruptionTime;
       let starScale = 1;
       let starHidden = false;
-      if (a.disrupts) {
+      if (a.film) {
+        const frac = Math.min(Math.max(sinceDisruption / (a.debris.endTime - a.disruptionTime), 0), 1);
+        starScale = 1 - (1 - config.cinematic.headMinScale) * frac;
+      } else if (a.disrupts) {
         const fade = Math.min(Math.max(sinceDisruption / physics.starFadeTime, 0), 1);
         starScale = 1 - fade;
         starHidden = fade >= 1;

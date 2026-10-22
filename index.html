@@ -27,6 +27,9 @@
     --tde-cool: #ff7a3c;
     --tde-glow: #8fc2ff;
     --tde-flash: #fff4d6;
+    --gal-a: #bcd4ff;
+    --gal-b: #ffc27a;
+    --gal-core: #fff4d6;
     --tde-star-core: #fff1c2;
     --tde-star-edge: #ff9a3d;
     --disk-sgr-hot: #ffb48a;
@@ -84,7 +87,8 @@
   #bh-scene,
   #bn-scene,
   #in-scene,
-  #td-scene {
+  #td-scene,
+  #gx-scene {
     position: absolute;
     inset: 0;
     width: 100%;
@@ -95,12 +99,14 @@
   #bh-scene,
   #bn-scene,
   #in-scene,
-  #td-scene { touch-action: none; cursor: grab; }
+  #td-scene,
+  #gx-scene { touch-action: none; cursor: grab; }
   #scene:active,
   #bh-scene:active,
   #bn-scene:active,
   #in-scene:active,
-  #td-scene:active { cursor: grabbing; }
+  #td-scene:active,
+  #gx-scene:active { cursor: grabbing; }
 
   .stage-title {
     position: absolute;
@@ -142,6 +148,8 @@
   .key.ns-b { --swatch: var(--ns-b-edge); }
   .key.tde-hot { --swatch: var(--tde-hot); }
   .key.tde-cool { --swatch: var(--tde-cool); }
+  .key.gal-a { --swatch: var(--gal-a); }
+  .key.gal-b { --swatch: var(--gal-b); }
 
   .stage-footer {
     position: absolute;
@@ -157,7 +165,8 @@
   }
   .stage-footer > * { pointer-events: auto; }
   .stage-actions { display: flex; flex-wrap: wrap; gap: 8px; }
-  .mode-switch { display: flex; margin-left: auto; }
+  .mode-switch { display: flex; margin-left: auto; max-width: 100%; overflow-x: auto; }
+  .mode-switch button { white-space: nowrap; flex: none; }
   .mode-switch button { border-radius: 0; }
   .mode-switch button:first-child { border-radius: 8px 0 0 8px; }
   .mode-switch button:last-child { border-radius: 0 8px 8px 0; }
@@ -245,7 +254,8 @@
   #graph,
   #bn-graph,
   #in-graph,
-  #td-graph { display: block; width: 100%; height: 180px; }
+  #td-graph,
+  #gx-graph { display: block; width: 100%; height: 180px; }
   .readouts {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -298,6 +308,7 @@
     <canvas id="bn-scene" data-mode="binary" hidden></canvas>
     <canvas id="in-scene" data-mode="inspiral" hidden></canvas>
     <canvas id="td-scene" data-mode="tidal" hidden></canvas>
+    <canvas id="gx-scene" data-mode="galaxy" hidden></canvas>
 
     <header class="stage-title" data-mode="pulsar">
       <h1>펄서</h1>
@@ -345,6 +356,16 @@
       <li class="key ns-b">중성자별 2</li>
     </ul>
 
+    <header class="stage-title" data-mode="galaxy" hidden>
+      <h1>은하 충돌</h1>
+      <p>두 원반 은하가 서로 스치며 긴 꼬리를 뽑고 합쳐지는 과정</p>
+    </header>
+
+    <ul class="legend" data-mode="galaxy" hidden>
+      <li class="key gal-a">첫 번째 은하의 별</li>
+      <li class="key gal-b">두 번째 은하의 별</li>
+    </ul>
+
     <ul class="legend" data-mode="tidal" hidden>
       <li class="key tde-hot">뜨거운 부스러기 (블랙홀 가까이)</li>
       <li class="key tde-cool">식은 부스러기</li>
@@ -369,7 +390,12 @@
       </div>
       <div class="stage-actions" data-mode="tidal" hidden>
         <button id="td-btn-restart" type="button">다시 시작</button>
+        <button id="td-btn-style" type="button">계산 보기로</button>
         <button id="td-btn-pause" type="button" aria-pressed="false">일시정지</button>
+      </div>
+      <div class="stage-actions" data-mode="galaxy" hidden>
+        <button id="gx-btn-restart" type="button">다시 시작</button>
+        <button id="gx-btn-pause" type="button" aria-pressed="false">일시정지</button>
       </div>
       <div class="mode-switch" role="group" aria-label="천체 선택">
         <button type="button" data-target="pulsar" aria-pressed="true">펄서</button>
@@ -377,6 +403,7 @@
         <button type="button" data-target="binary" aria-pressed="false">식쌍성</button>
         <button type="button" data-target="inspiral" aria-pressed="false">쌍성 병합</button>
         <button type="button" data-target="tidal" aria-pressed="false">조석 파괴</button>
+        <button type="button" data-target="galaxy" aria-pressed="false">은하 충돌</button>
       </div>
     </div>
     <p id="mode-error" class="mode-error" role="alert" hidden></p>
@@ -589,6 +616,43 @@
           <label for="td-ctl-speed">재생 속도</label>
           <output id="td-ctl-speed-value" for="td-ctl-speed"></output>
           <input id="td-ctl-speed" type="range">
+        </div>
+      </section>
+    </div>
+
+    <div class="mode-panel" data-mode="galaxy" hidden>
+      <section class="block">
+        <h2>두 은하 중심 사이 거리 (원반 반지름의 배수)</h2>
+        <canvas id="gx-graph"></canvas>
+        <dl class="readouts">
+          <div><dt>지난 시간</dt><dd id="gx-read-time">-</dd></div>
+          <div><dt>지금 중심 사이 거리</dt><dd id="gx-read-distance">-</dd></div>
+          <div><dt>가장 가까웠던 거리</dt><dd id="gx-read-closest">-</dd></div>
+        </dl>
+        <p id="gx-read-status" class="status" role="status"></p>
+      </section>
+
+      <section class="block">
+        <h2>조절 (바꾸면 처음부터 다시)</h2>
+        <div class="control">
+          <label for="gx-ctl-ratio">두 번째 은하 질량 (첫 번째 대비)</label>
+          <output id="gx-ctl-ratio-value" for="gx-ctl-ratio"></output>
+          <input id="gx-ctl-ratio" type="range">
+        </div>
+        <div class="control">
+          <label for="gx-ctl-periapsis">가장 가까이 지나는 거리</label>
+          <output id="gx-ctl-periapsis-value" for="gx-ctl-periapsis"></output>
+          <input id="gx-ctl-periapsis" type="range">
+        </div>
+        <div class="control">
+          <label for="gx-ctl-tilt">두 번째 은하 기울기 (180°는 거꾸로 돎)</label>
+          <output id="gx-ctl-tilt-value" for="gx-ctl-tilt"></output>
+          <input id="gx-ctl-tilt" type="range">
+        </div>
+        <div class="control">
+          <label for="gx-ctl-speed">재생 속도</label>
+          <output id="gx-ctl-speed-value" for="gx-ctl-speed"></output>
+          <input id="gx-ctl-speed" type="range">
         </div>
       </section>
     </div>

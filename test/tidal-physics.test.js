@@ -21,6 +21,7 @@ import {
   periapsisShiftPerOrbit,
   collisionPoint,
   collisionFlash,
+  buildStream,
 } from '../src/tidal/physics.js';
 
 const near = (a, b, tol = 1e-6) => assert.ok(Math.abs(a - b) <= tol * Math.max(1, Math.abs(b)), `${a} vs ${b}`);
@@ -217,4 +218,22 @@ test('늘어난 구름: 반지름 방향이 옆 방향보다 길다', () => {
     b += (-ox * ry + oy * rx) ** 2 / (len * len);
   }
   assert.ok(a > 4 * b);
+});
+
+test('연출 꼬리: 흘려진 순간 알갱이는 별 위치에 있다', () => {
+  const periapsis = 0.8;
+  const d = buildStream({ count: 400, periapsis, spread: 0.08, cloudRadius: 0, seed: 1, startRadius: 4.5, endFactor: 1.2 });
+  const out = [0, 0, 0];
+  for (const i of [0, 100, 199, 200, 300, 399]) {
+    const t = d.releaseTime[i];
+    debrisPosition(d, i, t, 0, out);
+    const [sx, sy] = parabolicPosition(t, periapsis);
+    assert.ok(Math.hypot(out[0] - sx, out[1] - sy) < 1e-6, `입자 ${i}`);
+  }
+});
+
+test('연출 꼬리: 일찍 흘린 알갱이일수록 더 묶여 있다', () => {
+  const d = buildStream({ count: 100, periapsis: 1, spread: 0.08, cloudRadius: 0, seed: 1, startRadius: 4.5, endFactor: 1.2 });
+  assert.ok(d.el[0].a < d.el[49].a || d.el[49].hyperbolic);
+  assert.ok(d.releaseTime[0] < d.releaseTime[99]);
 });
