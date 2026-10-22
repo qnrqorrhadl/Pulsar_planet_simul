@@ -33,6 +33,7 @@ export function createBlackHoleScene(canvas, config) {
     uCloudOuterB: { value: 0 },
     uCloudHeight: { value: 0 },
     uCloudFlare: { value: 1 },
+    uCloudShell: { value: 0 },
     uCloudFalloff: { value: 0 },
     uCloudGain: { value: 0 },
     uTime: { value: 0 },
@@ -91,6 +92,7 @@ export function createBlackHoleScene(canvas, config) {
       uniforms.uCloudOuterB.value = cloud.outerEnd;
       uniforms.uCloudHeight.value = cloud.heightRatio;
       uniforms.uCloudFlare.value = cloud.flare;
+      uniforms.uCloudShell.value = cloud.shellOffset;
       uniforms.uCloudFalloff.value = cloud.falloff;
       uniforms.uCloudGain.value = cloud.gain;
       dirty = true;

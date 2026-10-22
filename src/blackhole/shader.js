@@ -75,6 +75,7 @@ export function buildBlackHoleFragment(tracing, disk, stars, jet, cloud, precess
   uniform float uCloudOuterB;
   uniform float uCloudHeight;
   uniform float uCloudFlare;
+  uniform float uCloudShell;
   uniform float uCloudFalloff;
   uniform float uCloudGain;
   const float CLOUD_SPEED = ${glFloat(cloud.speedScale)};
@@ -311,7 +312,8 @@ export function buildBlackHoleFragment(tracing, disk, stars, jet, cloud, precess
         float ringRadius = length(position.xz);
         // 두께: 반지름 6 rs에서 heightRatio·6. flare가 1이면 반지름에 정비례, 1보다 크면 바깥으로 갈수록 나팔처럼 더 빨리 두꺼워진다.
         float thick = uCloudHeight * 6.0 * pow(max(ringRadius, 1.5) / 6.0, uCloudFlare);
-        float lift = position.y / thick;
+        // shellOffset이 0이면 원반 면에서 가장 진하고, 0보다 크면 가장 진한 곳이 면에서 위·아래로 thick × shellOffset만큼 떠서 겉면을 덮는 막이 된다.
+        float lift = (abs(position.y) - uCloudShell * thick) / thick;
         if (lift * lift < 9.0 && rNow < uCloudOuterB) {
           float radial = pow(max(ringRadius, 1.0), -uCloudFalloff)
             * smoothstep(uCloudInnerA, uCloudInnerB, rNow)

@@ -57,10 +57,11 @@ export const config = {
         innerEnd: 3.8,
         outerStart: 8,
         outerEnd: 14,
-        heightRatio: 0.16,
-        flare: 1.4,
+        heightRatio: 0.07,
+        flare: 0.8,
+        shellOffset: 1.5,
         falloff: 0.6,
-        gain: 0.65,
+        gain: 0.9,
       },
     },
   },
@@ -133,6 +134,8 @@ export const config = {
     heightRatio: 0.3,
     // 두께가 반지름에 따라 늘어나는 정도: 1이면 정비례, 클수록 바깥이 나팔처럼 더 두꺼워진다
     flare: 1,
+    // 가장 진한 곳을 원반 면에서 띄우는 정도(두께의 배수): 0이면 면에서 가장 진함, 클수록 위·아래로 떠서 겉면을 덮는 막
+    shellOffset: 0,
     falloff: 1.5,
     gain: 1.3,
     speedScale: 0.8,

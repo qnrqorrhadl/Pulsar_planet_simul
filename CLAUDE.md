@@ -10,7 +10,7 @@
 
 - 펄서 1단계 완료: 3D 장면, 밝기 그래프, 조절판 4개
 - 블랙홀 1단계 완료: 지평선, 강착원반, 빛 휘어짐, 조절판 5개(관측 각도, 방위각, 블랙홀 질량, 카메라까지 실제 거리, 원반 회전 속도)
-- 블랙홀 10단계 완료: SS 433 원반을 반지름 14로 키우고 옅은 구름 층을 얹음(`diskStyles.feasting.cloud`: 높이 `heightRatio`, 나팔 정도 `flare`, 밝기 `gain`). 구름 값은 원반 옷마다 따로 둘 수 있다(없으면 `config.cloud`). 카메라 최소 거리 16, SS 433 프리셋 거리 40 rs
+- 블랙홀 10단계 완료: SS 433 원반을 반지름 14로 키우고 옅은 구름 층을 얹음(`diskStyles.feasting.cloud`: 높이 `heightRatio`, 나팔 정도 `flare`, 겉면에서 띄우는 정도 `shellOffset`, 밝기 `gain`). 구름 값은 원반 옷마다 따로 둘 수 있다(없으면 `config.cloud`). 카메라 최소 거리 16, SS 433 프리셋 거리 40 rs
 - 블랙홀 9단계 완료: 드래그가 고개 돌리기에서 블랙홀 둘레 돌기로 바뀜(방위각·관측 각도 슬라이더와 연동, 항상 가운데). 시선 상태(`lookYawDeg`, `lookPitchDeg`)는 없앰
 - 블랙홀 8단계 완료: 원반 옷(`config.diskStyles`: standard/hungry/feasting)을 프리셋이 고름. 궁수자리 A*는 작고 어둡고 붉게, SS 433은 크고 밝은 푸른 흰색. 색은 index.html 토큰(`--disk-sgr-*`, `--disk-ss-*`)
 - 블랙홀 7단계 완료: 제트 불규칙함(줄기 휘어짐 `wobble`, 굵기 `swell`, 덩어리 제각각 `knotJitter`, 거친 가장자리 `ragged`). `config.js`의 `jet`와 `jetPrecessing`에 빠른 조절판이 있고 0이면 꺼진다

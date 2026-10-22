@@ -95,7 +95,7 @@ test('원반 옷의 구름 값이 올바르고 구름 모양 값이 셰이더에
     if (!style.cloud) continue;
     const c = style.cloud;
     assert.ok(c.innerStart < c.innerEnd && c.innerEnd < c.outerStart && c.outerStart < c.outerEnd);
-    assert.ok(c.outerEnd <= style.outerRadius && c.heightRatio > 0 && c.gain > 0 && c.flare > 0);
+    assert.ok(c.outerEnd <= style.outerRadius && c.heightRatio > 0 && c.gain > 0 && c.flare > 0 && c.shellOffset >= 0);
   }
 });
 
